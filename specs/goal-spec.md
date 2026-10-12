@@ -1,6 +1,6 @@
 # Goal Spec: Drone Tender Desk (working name)
 
-> Defines *what* we're building and *why*. The frontend spec, backend spec and API contract derive from this document. Draft v0.1, owner: VJ.
+> Defines *what* we're building and *why*. The frontend spec, backend spec and API contract derive from this document. Draft v0.2, owner: VJ.
 
 ## 1. Problem Statement
 Indian government RFIs and RFPs for drones and counter-drone systems are published in many separate places: the Ministry of Defence website, the GeM portal, the Central Public Procurement Portal, state police websites, PSUs and research institutes. Each one is a long PDF in a different format. A drone or anti-drone OEM today has to check all these sites by hand, then read every document to find the few facts that decide whether to bid: what is being bought, how many, the key technical requirements, who is eligible, and when bids close. Opportunities are missed and reading time is wasted.
@@ -70,14 +70,14 @@ This application gives OEMs one place to find drone and counter-drone tenders fr
 | RFP | Request for Proposal. A formal request for bids against stated requirements. |
 | Issuing body | The organisation that published the tender, e.g. Ministry of Defence, Indian Army, BSF, a state police force. |
 | Buyer type | Central (Union government bodies and PSUs) or State (state government bodies). |
-| Category | Drone (UAVs and their systems) or Counter-drone (detection, jamming, interception). |
+| Category | Drone (UAVs and their systems) or Counter-drone (systems that detect drones, such as radars and RF detectors, including detection-only systems, and systems that stop them, such as jammers and interceptors). |
 | Bid closing date | The last date to submit a bid or response, as stated in the document. |
 | EMD | Earnest money deposit, the security amount a bidder pays to take part. |
 | Draft | A tender whose fields have been extracted but not yet confirmed by the admin. Not public. |
 | Published | A tender the admin has confirmed. Visible to everyone. |
 | Closed | A published tender whose bid closing date has passed. |
 
-## Open Questions
-1. Should OEM users be able to suggest a tender they have found? (Assumed **no** for v1.)
-2. Is one admin account enough, or will more people add tenders? (Assumed **one**.)
-3. What exactly counts as "counter-drone" for the category filter? Detection-only systems too, or only systems that can neutralise a drone?
+## Decisions Made
+1. OEM users cannot suggest tenders in v1.
+2. There is one admin account.
+3. "Counter-drone" covers detection-only systems (radars, RF detectors) as well as systems that stop a drone (jammers, interceptors).

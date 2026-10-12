@@ -1,6 +1,6 @@
 # Backend Spec: Drone Tender Desk
 
-> Describes the data, rules, security and integrations behind the screens in `frontend-spec.md`. Derived from `goal-spec.md`. Draft v0.1, owner: VJ.
+> Describes the data, rules, security and integrations behind the screens in `frontend-spec.md`. Derived from `goal-spec.md`. Draft v0.2, owner: VJ.
 
 ## 1. Tech Stack
 - Python with FastAPI.
@@ -61,6 +61,8 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
 | prompt_version | text | e.g. "v1" |
 | raw_output | JSON | what the model returned, before any admin edits |
 | outcome | enum: succeeded, partial, failed, timed_out | |
+| failure_reason | text | optional; why the run did not succeed, e.g. "no readable text", "timeout", "invalid JSON", "API error" |
+| input_truncated | boolean | default false; true if the PDF text was cut to fit the model's input limit |
 | duration_ms | integer | |
 | input_tokens, output_tokens | integer | for cost tracking |
 | created_at | timestamp | |
@@ -79,7 +81,9 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
 7. **Nothing is invented.** The extraction prompt tells the model to leave a field empty if the document does not state it. The code also enforces this by ignoring any field it cannot validate.
 8. **Re-extraction is allowed only on drafts.** Running extraction again overwrites the draft's fields but keeps the earlier ExtractionRun records.
 9. **Unpublishing** sets status back to draft. The tender disappears from public endpoints at once.
-10. **Search** matches the query words, ignoring case, in title, issuing_body, item_and_quantity and technical_requirements.
+10. **Search** matches the query words, ignoring case, in title, issuing_body, item_and_quantity and technical_requirements. Each word is a substring match (`ILIKE`), and a tender must match every word (AND), though different words may match different fields. To revisit (for example with Postgres full-text search) if the 500 ms target is missed.
+11. **Extraction outcome on the Tender.** An ExtractionRun outcome of `timed_out` sets the Tender's extraction_status to `failed`. The other outcomes carry over unchanged.
+12. **Timestamps** in API responses are given in India time (`+05:30`).
 
 ## 5. Authentication and Authorization
 - Admin logs in with username and password and receives a signed token (JWT) that expires after 8 hours.
@@ -92,11 +96,12 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
 ## 6. Third-Party Integrations
 
 ### Claude API (extraction service)
-- **Input:** the text read from the PDF. If the PDF has almost no text (under 200 characters), extraction is not attempted and the outcome is "failed" with reason "no readable text."
+- **Stub for early development:** until the Claude call is built, the extraction service is a stub that always returns outcome "failed" with failure_reason "extraction not enabled", model_name "stub" and prompt_version "none". Every endpoint behaves as it does after a real extraction failure.
+- **Input:** the text read from the PDF. If the PDF has almost no text (under 200 characters), extraction is not attempted and the outcome is "failed" with failure_reason "no readable text."
 - **Output:** a fixed JSON structure with one key for every extractable Tender field. The response is checked against this structure in code.
 - **Time limit:** 60 seconds. On timeout, the outcome is "timed_out" and the draft keeps all fields empty.
 - **On any failure** (timeout, API error, invalid JSON): the draft is still created with source_url and the PDF saved, all extractable fields empty, extraction_status "failed." The endpoint still succeeds so the admin can fill in fields by hand.
-- **Long documents:** if the text is longer than the model's input limit, send the first part only and record that it was cut in the ExtractionRun. (To revisit during evaluation.)
+- **Long documents:** if the text is longer than the model's input limit, send the first part only and set input_truncated to true in the ExtractionRun. (To revisit during evaluation.)
 - **The API key** is read from an environment variable on the server. It is never logged, never stored in the repository and never sent in any response.
 
 ### Amazon S3
@@ -117,8 +122,9 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
 - An AI failure is not an error for the endpoint. It is reported through extraction_status and fields_not_found.
 
 ## 9. Environment and Deployment
-- **Environment variables:** `DATABASE_URL`, `ANTHROPIC_API_KEY`, `JWT_SECRET`, `S3_BUCKET_NAME`, `ALLOWED_ORIGINS` (the Vercel domains for CORS).
-- **Local development:** PostgreSQL in Docker; uploaded files may be saved to a local folder instead of S3.
+- **Environment variables:** `DATABASE_URL`, `ANTHROPIC_API_KEY`, `JWT_SECRET`, `S3_BUCKET_NAME`, `UPLOAD_DIR`, `ALLOWED_ORIGINS` (the Vercel domains for CORS).
+- **File storage:** if `S3_BUCKET_NAME` is set, PDFs are stored in S3. Otherwise they are saved in the local folder named by `UPLOAD_DIR`.
+- **Local development:** PostgreSQL in Docker; uploaded files saved to `UPLOAD_DIR`.
 - **Cloud:** AWS for the backend, database and S3 bucket, set up the way Chapter 6 shows for Musafir (Terraform, GitHub Actions). Details go in a later deployment spec.
 - **Backups:** the database is backed up daily. Restoring a known tender is part of the deployment acceptance checks.
 
@@ -126,6 +132,8 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
 1. The Claude model is chosen during the evaluation phase by comparing a cheaper and a stronger model on the same test PDFs. Development starts with a mid-range model.
 2. Tenders can only be unpublished in v1, not deleted. This keeps a record of every tender that was ever shown.
 3. Amendments (corrigenda) are handled in v1 by the admin editing the fields by hand. Linking an amendment to its original tender is Post-MVP.
+4. The first build uses the extraction stub (see section 6). The admin fills in every field by hand.
+5. There is no logout endpoint. Logout deletes the token in the browser, and the token stays valid until it expires.
 
 ## 11. Open Questions
 None at present.

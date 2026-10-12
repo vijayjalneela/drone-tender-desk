@@ -1,12 +1,12 @@
 # API Contract: Drone Tender Desk
 
-> The agreement between the frontend and the backend. Both sides are built against this document without needing to see each other's code. Derived from `frontend-spec.md` and `backend-spec.md`. Draft v0.1, owner: VJ.
+> The agreement between the frontend and the backend. Both sides are built against this document without needing to see each other's code. Derived from `frontend-spec.md` and `backend-spec.md`. Draft v0.2, owner: VJ.
 
 ## 1. General Rules
-- **Base path:** all endpoints start with `/api`. The full address comes from `VITE_API_BASE_URL` in the frontend.
+- **Base path:** all endpoints start with `/api`. The server address comes from `VITE_API_BASE_URL` in the frontend, which does not include `/api` (for example `http://localhost:8000`).
 - **Format:** requests and responses are JSON, except the PDF upload, which is `multipart/form-data`.
 - **Dates** (calendar days) are strings in `YYYY-MM-DD` form, for example `"2026-11-14"`.
-- **Timestamps** are ISO 8601 strings with a time zone, for example `"2026-10-12T22:30:00+05:30"`.
+- **Timestamps** are ISO 8601 strings in India time (`+05:30`), for example `"2026-10-12T22:30:00+05:30"`.
 - **Empty fields** are `null`, never an empty string and never a made-up value.
 - **Admin endpoints** need the header `Authorization: Bearer <token>`.
 - **Open or Closed** is worked out by the backend (India time) and sent as `is_closed`. The frontend never calculates it.
@@ -85,7 +85,7 @@ List published tenders.
 
 | Query parameter | Type | Default | Notes |
 |---|---|---|---|
-| `q` | text | none | Search words, ignoring case |
+| `q` | text | none | Search words, ignoring case. A tender must contain every word, each as part of any of title, issuing_body, item_and_quantity or technical_requirements |
 | `category` | `drone`, `counter_drone` | all | |
 | `document_type` | `RFI`, `RFP` | all | |
 | `buyer_type` | `central`, `state` | all | |
@@ -112,8 +112,10 @@ Request: `{ "username": "admin", "password": "..." }`
 - **401:** wrong username or password. The message does not say which one was wrong.
 - **429:** more than 5 attempts in a minute from the same address.
 
+There is no logout endpoint. The frontend logs out by deleting the token; the token stays valid until `expires_at`.
+
 ### `GET /api/admin/tenders`
-All tenders, drafts included. Same query parameters as the public list, plus `status_admin` with values `draft`, `published`, `all` (default `all`).
+All tenders, drafts included. Same query parameters as the public list, except that `status` defaults to `all` here (not `open`), plus `status_admin` with values `draft`, `published`, `all` (default `all`). The dashboard's "Closed" state means `status` is `published` and `is_closed` is true.
 - **200:** `{ "items": [TenderAdmin], "total": ..., "page": ..., "page_size": ... }`
 - **401:** not logged in.
 
