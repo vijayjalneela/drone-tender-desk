@@ -1,0 +1,1233 @@
+▗ ▗   ▖ ▖  Claude Code v2.1.296
+           Opus 5.5 · Claude Pro
+ ▘▘   ▝▝   ~/projects/drone-tender-desk
+
+  Get to finished work sooner with Opus 5.5. Switch anytime with /model.
+
+❯ /login                                                                        
+  ⎿  Login successful
+
+❯    Read the four files in specs/ (goal-spec.md, frontend-spec.md,             
+  backend-spec.md, api-contract.md). They are the source of truth for this      
+  project.                                                                      
+                                                                                
+     Propose a build plan for the smallest working user journey first: an admin 
+  adds a tender by hand (no AI extraction yet), publishes it, and it appears    
+  on the public Tender List and Detail pages, running locally with PostgreSQL   
+  in Docker.                                                                    
+                                                                                
+     Break the plan into small tasks. For each task list the files you would    
+  create and the check that proves it is done. Include creating a CLAUDE.md as  
+  the first task. List any decisions the specs still leave open, and any place  
+  where the four specs disagree with each other.                                
+                                                                                
+     Do not write or edit any files yet.                                        
+
+  Read 4 files, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+⏺ User answered Claude's questions:
+  ⎿  · The API contract has no way to create a tender without a PDF: POST 
+     /api/admin/tenders needs a file and runs extraction. How should 'add by 
+     hand' work in this first slice? → Upload with stub extractor (Recommended)
+     · How much admin UI and security should the first slice include? → Login + 
+     minimal admin UI (Recommended)
+
+⏺ Updated plan
+  ⎿  /plan to preview
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Build Plan — Slice 1: manual tender → publish → public list/detail      │
+     │ (local)                                                                 │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ ~/projects/drone-tender-desk holds only specs/ (goal, frontend,         │
+     │ backend, api-contract) and an empty git repo. The first goal is the     │
+     │ smallest end-to-end journey, without AI. The admin logs in, uploads a   │
+     │ PDF with a source URL, fills in the fields by hand, and publishes. The  │
+     │ tender then appears on the public Tender List and Detail pages.         │
+     │ Everything runs locally against PostgreSQL in Docker.                   │
+     │                                                                         │
+     │ Decisions taken with the user                                           │
+     │ - "By hand" stays inside the contract. POST /api/admin/tenders          │
+     │   (multipart, PDF + source_url) calls an extraction-service stub that   │
+     │   always returns failed. The draft comes back with every extractable    │
+     │   field null and fields_not_found listing them all. The admin fills in  │
+     │   fields through PATCH and then publishes. Real Claude extraction later │
+     │   replaces only the stub, with no API change.                           │
+     │ - Login and a minimal admin UI are in scope. JWT auth guards admin      │
+     │   endpoints from day one. The admin UI has Login, Dashboard, Add        │
+     │   Tender, and a Review form with Save and Publish.                      │
+     │                                                                         │
+     │ Deferred to later slices: the Claude call, POST …/extract, GET          │
+     │ …/pdf-url and the PDF pane on Review, S3 (local folder for now), rate   │
+     │ limiting (login and public), deployment (Vercel, AWS, Terraform,        │
+     │ backups), and the 2 s / 500 ms performance checks.                      │
+     │                                                                         │
+     │ Proposed layout                                                         │
+     │                                                                         │
+     │ drone-tender-desk/                                                      │
+     │   CLAUDE.md  README.md  docker-compose.yml  .env.example  .gitignore    │
+     │   specs/                      (unchanged, source of truth)              │
+     │   backend/   pyproject.toml, alembic.ini, alembic/, app/, tests/        │
+     │   frontend/  package.json, vite.config.ts, src/, tests (Vitest)         │
+     │                                                                         │
+     │ Tasks (each one is small, with a check that proves it is done)          │
+     │                                                                         │
+     │ T0. CLAUDE.md                                                           │
+     │ - Files: CLAUDE.md                                                      │
+     │ - Content: specs/ is the source of truth and code must follow it. Where │
+     │   specs conflict, stop and ask. Repo layout. Commands to run the        │
+     │   database, backend, frontend and tests. Conventions: error envelope,   │
+     │   null for empty fields, YYYY-MM-DD dates, IST-derived is_closed, no    │
+     │   secrets in the frontend or logs. Current slice scope and deferred     │
+     │   list. Never invent extracted values.                                  │
+     │ - Check: the file exists, and every command it lists runs successfully  │
+     │   once T1–T8 are in place. Re-verify at T11.                            │
+     │                                                                         │
+     │ T1. Repo skeleton + Postgres in Docker                                  │
+     │ - Files: docker-compose.yml (postgres:16, a named volume, a             │
+     │   healthcheck, an extra _test database), .env.example (DATABASE_URL,    │
+     │   JWT_SECRET, ALLOWED_ORIGINS, UPLOAD_DIR, ANTHROPIC_API_KEY blank,     │
+     │   VITE_API_BASE_URL), .gitignore (.env, uploads/, node_modules, .venv)  │
+     │ - Check: after docker compose up -d db, docker compose exec db          │
+     │   pg_isready reports accepting connections, and psql lists both         │
+     │   databases.                                                            │
+     │                                                                         │
+     │ T2. Backend skeleton + health + error envelope                          │
+     │ - Files: backend/pyproject.toml (fastapi, uvicorn, sqlalchemy 2,        │
+     │   psycopg, alembic, pydantic-settings, pyjwt, bcrypt/passlib,           │
+     │   python-multipart, pytest, httpx), app/main.py, app/config.py,         │
+     │   app/db.py, app/errors.py (exception handlers that map to              │
+     │   {error:{code,message,fields?}} for 401/404/409/413/422/500, with      │
+     │   request-validation 422s rewritten into this shape),                   │
+     │   app/routers/health.py, tests/conftest.py, tests/test_health.py        │
+     │ - Check: pytest tests/test_health.py passes. curl                       │
+     │   localhost:8000/api/health returns {"status":"ok","database":"ok"}.    │
+     │   With the database stopped, the endpoint returns a non-200 in the      │
+     │   error envelope.                                                       │
+     │                                                                         │
+     │ T3. Data model + first migration                                        │
+     │ - Files: app/models.py (Admin, Tender, and ExtractionRun created now so │
+     │   the stub can record its run), alembic/env.py,                         │
+     │   alembic/versions/0001_initial.py                                      │
+     │ - Check: alembic upgrade head succeeds on a clean database. \d tenders  │
+     │   shows the enum types, fields_not_found text[] and the timestamps. A   │
+     │   downgrade base → upgrade head round-trip succeeds.                    │
+     │                                                                         │
+     │ T4. Admin auth                                                          │
+     │ - Files: app/security.py (bcrypt hashing, an 8 h JWT, a require_admin   │
+     │   dependency), app/routers/admin_auth.py (POST /api/admin/login),       │
+     │   app/cli.py (python -m app.cli create-admin), tests/test_auth.py       │
+     │ - Check: tests cover a correct login (200 with access_token and         │
+     │   expires_at), a wrong user or password (401 with the same message), a  │
+     │   missing, bad or expired token on an admin route (401), and the CLI    │
+     │   creating a hashed admin with no plaintext in the database.            │
+     │                                                                         │
+     │ T5. Upload → draft with the stub extractor                              │
+     │ - Files: app/storage.py (local folder, returns pdf_storage_key),        │
+     │   app/extraction/service.py (interface + StubExtractor that returns     │
+     │   failed and records an ExtractionRun with outcome failed),             │
+     │   app/schemas.py (TenderSummary, TenderDetail and TenderAdmin, exactly  │
+     │   as in contract §2), app/routers/admin_tenders.py (POST                │
+     │   /api/admin/tenders), tests/test_admin_create.py                       │
+     │ - Check: tests cover a valid PDF + URL (201, status:"draft",            │
+     │   extraction_status:"failed", all extractable fields null,              │
+     │   fields_not_found listing them all, source_url set, file saved), a     │
+     │   non-PDF renamed .pdf (422, caught by checking the %PDF- magic bytes), │
+     │   a file over 20 MB (413), a missing or non-http URL (422), and no      │
+     │   token (401).                                                          │
+     │                                                                         │
+     │ T6. Admin read / edit / publish / unpublish                             │
+     │ - Files: app/routers/admin_tenders.py (GET list with status_admin, GET  │
+     │   by id, PATCH, publish, unpublish), app/services/tenders.py            │
+     │   (required-field rule including state_name when buyer_type=state, plus │
+     │   the status transitions), tests/test_admin_lifecycle.py                │
+     │ - Check: tests cover a PATCH with an invalid date or enum (422, nothing │
+     │   saved), publishing with missing fields (422 listing every missing     │
+     │   one), a valid publish (200 with published_at set), publishing twice   │
+     │   (409), unpublishing (back to draft), unpublishing a draft (409), and  │
+     │   a PATCH that would blank a required field on a published tender       │
+     │   (422).                                                                │
+     │                                                                         │
+     │ T7. Public endpoints                                                    │
+     │ - Files: app/routers/public_tenders.py, app/services/listing.py         │
+     │   (filters, case-insensitive search over the four fields, is_closed     │
+     │   against today in Asia/Kolkata, sort rules, pagination),               │
+     │   tests/test_public.py                                                  │
+     │ - Check: tests use a frozen "today" in IST and cover a draft absent     │
+     │   from the list and returning 404 by id, a tender closing today still   │
+     │   open, yesterday's tender closed and only shown under closed/all, the  │
+     │   ordering for open, closed and all, each filter, q=jammer matching     │
+     │   technical_requirements, category=helicopter returning 422, and        │
+     │   page_size=101 returning 422.                                          │
+     │                                                                         │
+     │ T8. Frontend skeleton                                                   │
+     │ - Files: frontend/ Vite + React + TypeScript, Tailwind, React Router,   │
+     │   React Query; src/api/client.ts (uses VITE_API_BASE_URL, parses the    │
+     │   error envelope, attaches the bearer token on admin calls),            │
+     │   src/api/types.ts (mirrors contract §2), src/components/Header.tsx,    │
+     │   src/lib/dates.ts (14 Nov 2026 formatting, "Closing soon" within 7     │
+     │   days)                                                                 │
+     │ - Check: npm run build and npm test pass, with a Vitest test for        │
+     │   dates.ts. npm run dev renders the header. CORS works against the      │
+     │   local backend.                                                        │
+     │                                                                         │
+     │ T9. Public Tender List + Detail pages                                   │
+     │ - Files: src/pages/TenderList.tsx (filters and search kept in the URL,  │
+     │   Open/Closed badge from is_closed, row click),                         │
+     │   src/pages/TenderDetail.tsx ("Not stated in the document.", "View      │
+     │   original document" with target=_blank rel=noopener, the               │
+     │   authoritative-source notice, a back link that keeps the filters), and │
+     │   tests for each                                                        │
+     │ - Check: Vitest + RTL with a mocked API cover the loading, "No tenders  │
+     │   yet.", "No tenders match these filters" + Clear filters, error +      │
+     │   Retry, and "Tender not found" states. Manually,                       │
+     │   /?category=counter_drone&status=all survives a reload.                │
+     │                                                                         │
+     │ T10. Admin UI (minimal)                                                 │
+     │ - Files: src/auth/AuthContext.tsx (token in localStorage, redirect on   │
+     │   401 with the "session expired" message, except on the login call      │
+     │   itself), src/auth/RequireAdmin.tsx (redirect to /admin/login, then    │
+     │   back to the requested page), src/pages/admin/Login.tsx, Dashboard.tsx │
+     │   (table, Add tender, Publish/Unpublish with confirmation),             │
+     │   AddTender.tsx (PDF-only picker, URL validation that keeps Extract     │
+     │   disabled, a "Reading the document…" state, then navigation to         │
+     │   Review), ReviewTender.tsx (every field editable, "Not found in        │
+     │   document." markers, required-field highlight, Publish disabled until  │
+     │   valid, the confirmation dialog, edits kept on save error), and tests  │
+     │ - Check: RTL tests cover a wrong login (message shown, password         │
+     │   cleared, username kept), a guard redirect followed by a return to the │
+     │   requested page, Publish disabled while a required field is empty,     │
+     │   and a failed save keeping the typed values.                           │
+     │                                                                         │
+     │ T11. End-to-end journey + README                                        │
+     │ - Files: README.md (setup from zero), optionally                        │
+     │   frontend/e2e/journey.spec.ts (Playwright)                             │
+     │ - Check, from a clean clone:                                            │
+     │   a. docker compose up -d db, then alembic upgrade head and             │
+     │      create-admin.                                                      │
+     │   b. Start the backend and frontend.                                    │
+     │   c. Log in and add a sample PDF.                                       │
+     │   d. See the "Automatic extraction did not work…" notice, fill in the   │
+     │      required fields, and publish.                                      │
+     │   e. / shows the tender under Open, and the Detail page shows every     │
+     │      field plus a working source link.                                  │
+     │   f. Unpublish the tender, and it disappears from /.                    │
+     │   g. Logged out, /admin redirects to login, and curl /api/admin/tenders │
+     │      returns 401.                                                       │
+     │   h. The backend and frontend test suites pass.                         │
+     │                                                                         │
+     │ Open decisions (specs are silent — proposed default in brackets)        │
+     │                                                                         │
+     │ 1. Python version and package manager [3.12, uv]. Frontend TS or JS     │
+     │    [TypeScript]. Node version [20 LTS].                                 │
+     │ 2. Repo shape [monorepo with backend/ and frontend/].                   │
+     │ 3. Test stack [pytest against a real Postgres _test database; Vitest +  │
+     │    RTL; one Playwright journey].                                        │
+     │ 4. Search semantics for several words: AND or OR, ILIKE or Postgres     │
+     │    full-text [AND of words, ILIKE; revisit for the 500 ms target].      │
+     │ 5. Whether VITE_API_BASE_URL includes /api [no; the client appends      │
+     │    /api].                                                               │
+     │ 6. Timestamp time zone in responses [IST +05:30, as in the examples].   │
+     │ 7. Local storage config: no env var exists for the local folder or for  │
+     │    choosing between local and S3 [add UPLOAD_DIR; S3 used when          │
+     │    S3_BUCKET_NAME is set].                                              │
+     │ 8. Logout: there is no API endpoint [client-side token discard only;    │
+     │    tokens stay valid until expiry].                                     │
+     │ 9. Pagination UI on the Tender List: the API pages at 20, but the       │
+     │    frontend spec has no pager [simple Prev/Next].                       │
+     │ 10. Which time zone the frontend uses for "Closing soon" [IST date      │
+     │     maths, the same as the backend].                                    │
+     │ 11. ExtractionRun model_name / prompt_version for the stub ["stub" /    │
+     │     "none"].                                                            │
+     │ 12. The external references "Musafir" and "Chapter 6" (deployment       │
+     │     pattern) aren't in the repo. They are needed before the deployment  │
+     │     slice.                                                              │
+     │ 13. Goal-spec open question 3 (the definition of counter-drone) is      │
+     │     still open. It affects the extraction prompt, not this slice.       │
+     │                                                                         │
+     │ Places where the specs disagree                                         │
+     │                                                                         │
+     │ 1. Category slug: the frontend URL example uses category=counter-drone, │
+     │    but the API and backend use counter_drone. A request with the        │
+     │    hyphenated value would get a 422. [Use counter_drone in the URL as   │
+     │    well.]                                                               │
+     │ 2. Required-to-publish list: frontend §4.6 omits state_name, but        │
+     │    backend §4 rule 2 requires it when buyer_type=state. [Follow the     │
+     │    backend; the frontend highlights state_name conditionally.]          │
+     │ 3. Admin list default: the contract gives the admin list "same query    │
+     │    params as the public list", and that includes status defaulting to   │
+     │    open. The Admin Dashboard, however, shows all tenders, including     │
+     │    closed ones. [The admin list defaults status to all.]                │
+     │ 4. Dashboard states: the dashboard shows Draft/Published/Closed, but    │
+     │    status_admin only filters draft/published. Closed comes from         │
+     │    is_closed, and it is unclear whether Closed can be a draft. [Show    │
+     │    Closed only for published + is_closed.]                              │
+     │ 5. "Add tender" without a PDF: the user journey asks for manual entry,  │
+     │    but the contract only allows creating a tender through PDF upload    │
+     │    plus extraction. [Resolved: use the stub extractor.]                 │
+     │ 6. Extraction reason and truncation: the backend says to record the "no │
+     │    readable text" reason and that long text "was cut" in                │
+     │    ExtractionRun, but the entity has no fields for either. [Add         │
+     │    failure_reason and input_truncated when the real extractor lands.]   │
+     │ 7. Outcome enums: ExtractionRun has timed_out, but                      │
+     │    Tender.extraction_status doesn't. The mapping (timed_out → failed)   │
+     │    is implied, not stated. [Map to failed.]                             │
+     │ 8. Re-extract: the contract maps POST …/extract to the Review screen,   │
+     │    but frontend §4.6 doesn't describe a re-extract button. (Deferred,   │
+     │    but needs a decision.)                                               │
+     │ 9. Open questions: the goal spec still lists 3 open questions, while    │
+     │    the frontend, backend and contract all say "None at present".        │
+     │ 10. Unpublish confirmation: the frontend flow says "Unpublish →         │
+     │     confirm", but §4.4 doesn't list a confirmation text, unlike         │
+     │     Publish. [Use "Unpublish this tender? It will be hidden from the    │
+     │     public list."]                                                      │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+✻ Crunched for 1m 37s · done 11:08 PM
+
+❯ I accept all your suggested answers in square brackets, for both the open     
+  decisions and the spec disagreements, with these additions:                   
+                                                                                
+  1. Counter-drone includes detection-only systems (radars, RF detectors) as    
+  well as systems that stop a drone (jammers, interceptors).                    
+  2. Leave the re-extract button out of this slice. Note it as a later addition 
+  in frontend-spec.md.                                                          
+  3. Add failure_reason and input_truncated to ExtractionRun in backend-spec.md 
+  now, even though the stub won't use them.                                     
+  4. In goal-spec.md, replace the Open Questions with the decisions: no OEM     
+  suggestions in v1, one admin account, and the counter-drone definition above. 
+                                                                                
+  Make the first task of the plan "Update the four specs with these decisions", 
+  as one commit, before CLAUDE.md and any code. Then show me the revised plan.  
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Updated plan
+  ⎿  /plan to preview
+
+⏺ User approved Claude's plan
+  ⎿  Plan saved to: 
+     ~/.claude/plans/pasted-content-id-6c14-read-the-happy-raccoon.md · /plan to
+     edit
+     Build Plan — Slice 1: manual tender → publish → public list/detail (local)
+
+     Context
+
+     ~/projects/drone-tender-desk contains only specs/ on main, in a single
+     commit (0bfee99) tracking origin/main. The first goal is the smallest
+     end-to-end journey, without AI. The admin logs in, uploads a PDF with a
+     source URL, fills in the fields by hand, and publishes. The tender then
+     appears on the public Tender List and Detail pages. Everything runs locally
+     against PostgreSQL in Docker.
+
+     Decisions taken with the user
+     - "By hand" stays inside the contract. POST /api/admin/tenders (multipart,
+       PDF + source_url) calls an extraction-service stub that always returns
+       failed. The draft comes back with every extractable field null. The admin
+       fills in fields through PATCH and then publishes. Real Claude extraction
+       later replaces only the stub.
+     - Login and a minimal admin UI are in scope. JWT auth guards admin
+       endpoints from day one.
+     - All bracketed defaults are accepted, for both the open decisions and the
+       spec disagreements. Additions: counter-drone includes detection-only
+       systems; the re-extract button is left out of this slice; failure_reason
+       and input_truncated are added to ExtractionRun now; the goal-spec Open
+       Questions become Decisions.
+
+     Deferred to later slices: the Claude call, POST …/extract and the
+     re-extract button, GET …/pdf-url and the PDF pane, S3 (local folder for
+     now), rate limiting, deployment (needs the Musafir / "Chapter 6" reference,
+     still open), and the performance targets.
+
+     Git: create branch slice-1 from main. The spec update is its first commit,
+     followed by one commit per task. Nothing is pushed unless you ask.
+
+     Tasks
+
+     T0. Update the four specs with the decisions (one commit, no code)
+
+     goal-spec.md
+     - Replace Open Questions with Decisions Made:
+       - OEM users cannot suggest tenders in v1.
+       - One admin account.
+       - Counter-drone covers detection-only systems (radars, RF detectors) as
+         well as systems that stop a drone (jammers, interceptors).
+     - Update the Glossary Category row to match.
+
+     frontend-spec.md
+     - §4.1: change the URL example to category=counter_drone. Add simple
+       Prev/Next pagination (the API pages at 20).
+     - §4.1/§7: "Closing soon" uses India-time (Asia/Kolkata) dates, the same as
+       the backend.
+     - §4.4: Closed is shown only for published tenders whose is_closed is true.
+       Unpublish asks "Unpublish this tender? It will be hidden from the public
+       list."
+     - §4.6: add state_name as required when the buyer type is State.
+     - §6 Log out: client-side only. The token is discarded and stays valid on
+       the server until it expires.
+     - New section Later Additions: a re-extract button on Review Tender (uses
+       POST …/extract).
+     - §1: VITE_API_BASE_URL does not include /api.
+
+     backend-spec.md
+     - §3 ExtractionRun: add failure_reason (text, nullable, e.g. "no readable
+       text", "timeout", "invalid JSON") and input_truncated (boolean, default
+       false).
+     - §4 rule 10: search does a case-insensitive substring match (ILIKE), and
+       every word must match (AND). To revisit if the 500 ms target is missed.
+     - New rule: an ExtractionRun outcome of timed_out sets the Tender's
+       extraction_status to failed.
+     - §6/§9: add an UPLOAD_DIR env var. S3 is used when S3_BUCKET_NAME is set,
+       otherwise the local folder. Name the stub extractor (model_name "stub",
+       prompt_version "none").
+     - Timestamps are returned in IST (+05:30).
+
+     api-contract.md
+     - §1: VITE_API_BASE_URL excludes /api. Timestamps are in IST. Search
+       semantics are as in the backend spec.
+     - §4 GET /api/admin/tenders: status defaults to all here, not open. The
+       dashboard's Closed state means published + is_closed.
+     - There is no logout endpoint; logout is client-side.
+     - Check: git diff shows only specs/ changes. Each disagreement item (1–10
+       below) is resolved in the text. No spec has an "Open Questions" section
+       with open items. A single commit: "Record v0.2 spec decisions". Version
+       lines are bumped to "Draft v0.2".
+
+     T1. CLAUDE.md
+     - Files: CLAUDE.md
+     - Content:
+       - specs/ is the source of truth. If code and specs disagree, stop and
+         ask.
+       - Tooling: Python 3.12 + uv, Node 20, TypeScript, monorepo with backend/
+         and frontend/.
+       - Commands to run the database, backend, frontend and tests.
+       - Conventions: error envelope, null for empty fields, YYYY-MM-DD dates,
+         is_closed computed in IST, no secrets in the frontend or logs, never
+         invent extracted values.
+       - Slice scope and the deferred list.
+     - Check: the file exists. Every listed command is verified working at T11.
+
+     T2. Repo skeleton + Postgres in Docker
+     - Files: docker-compose.yml (postgres:16, a volume, a healthcheck, an extra
+       _test database), .env.example (DATABASE_URL, JWT_SECRET,
+       ALLOWED_ORIGINS, UPLOAD_DIR, blank ANTHROPIC_API_KEY/S3_BUCKET_NAME,
+       VITE_API_BASE_URL), .gitignore
+     - Check: docker compose up -d db starts the database, pg_isready reports
+       OK, and both databases exist.
+
+     T3. Backend skeleton + health + error envelope
+     - Files: backend/pyproject.toml, app/main.py, config.py, db.py, errors.py
+       (handlers that map to {error:{code,message,fields?}}, with FastAPI
+       validation 422s reshaped into it), routers/health.py, tests/conftest.py,
+       tests/test_health.py
+     - Check: pytest passes. curl /api/health returns
+       {"status":"ok","database":"ok"}. With the database down, the response is
+       a non-200 in the envelope.
+
+     T4. Data model + first migration
+     - Files: app/models.py (Admin, Tender, and ExtractionRun including
+       failure_reason and input_truncated), alembic/env.py,
+       alembic/versions/0001_initial.py
+     - Check: alembic upgrade head succeeds on a clean database. \d tenders / \d
+       extraction_runs match the spec. A downgrade → upgrade round-trip
+       succeeds.
+
+     T5. Admin auth
+     - Files: app/security.py (bcrypt, an 8 h JWT, require_admin),
+       routers/admin_auth.py, app/cli.py (create-admin), tests/test_auth.py
+     - Check: tests cover a correct login (200 with access_token/expires_at),
+       wrong credentials (401, same message for either), a missing, bad or
+       expired token (401), and only a hash stored.
+
+     T6. Upload → draft with the stub extractor
+     - Files: app/storage.py (local UPLOAD_DIR), app/extraction/service.py
+       (interface + StubExtractor, which records a run with outcome failed,
+       failure_reason "extraction not enabled" and model_name "stub"),
+       app/schemas.py (the contract §2 shapes), routers/admin_tenders.py (POST),
+       tests/test_admin_create.py
+     - Check: tests cover a valid upload (201, draft,
+       extraction_status:"failed", every extractable field null and listed in
+       fields_not_found, file saved), a renamed non-PDF (422, caught by checking
+       the %PDF- magic bytes), a file over 20 MB (413), a bad URL (422), and no
+       token (401).
+
+     T7. Admin read / edit / publish / unpublish
+     - Files: routers/admin_tenders.py (GET list with status defaulting to all +
+       status_admin, GET by id, PATCH, publish, unpublish),
+       services/tenders.py, tests/test_admin_lifecycle.py
+     - Check: tests cover an invalid PATCH (422, nothing saved), publishing with
+       missing fields (422 listing all of them, including state_name for a
+       State buyer), a valid publish (published_at set), publishing twice (409),
+       unpublish → draft, unpublishing a draft (409), and blanking a required
+       field on a published tender (422).
+
+     T8. Public endpoints
+     - Files: routers/public_tenders.py, services/listing.py,
+       tests/test_public.py
+     - Check: tests use a frozen IST "today" and cover a draft absent from the
+       list and returning 404 by id, a tender closing today still Open,
+       yesterday's tender Closed and only under closed/all, the sort rules, each
+       filter, a multi-word AND search hitting technical_requirements,
+       category=helicopter returning 422, and page_size=101 returning 422.
+
+     T9. Frontend skeleton
+     - Files: Vite + React + TS + Tailwind + Router + React Query;
+       src/api/client.ts (base URL + /api, envelope parsing, bearer token),
+       src/api/types.ts, components/Header.tsx, lib/dates.ts ("14 Nov 2026",
+       "Closing soon" in IST)
+     - Check: npm run build and npm test pass, including the dates.ts tests. The
+       dev server renders the header and CORS works.
+
+     T10. Public Tender List + Detail pages
+     - Files: pages/TenderList.tsx (URL-held filters, Prev/Next, badges),
+       pages/TenderDetail.tsx (empty-field text, source link in a new tab,
+       authoritative notice, a back link that keeps the filters), and tests
+     - Check: RTL tests cover the loading, "No tenders yet.", "No tenders match
+       these filters" + Clear, error + Retry, and "Tender not found" states.
+       /?category=counter_drone&status=all survives a reload.
+
+     T11. Admin UI (minimal, no re-extract button)
+     - Files: auth/AuthContext.tsx, auth/RequireAdmin.tsx,
+       pages/admin/Login.tsx, Dashboard.tsx (Publish/Unpublish confirmations),
+       AddTender.tsx, ReviewTender.tsx (every field editable, "Not found in
+       document.", required highlight including conditional state_name, the
+       Publish confirmation, edits kept on error), and tests
+     - Check: RTL tests cover a wrong login (password cleared, username kept), a
+       guard redirect followed by a return to the requested page, a 401
+       producing the "session expired" message (but not on the login call
+       itself), Publish disabled while a required field is empty, and a failed
+       save keeping the values.
+
+     T12. End-to-end journey + README
+     - Files: README.md, frontend/e2e/journey.spec.ts (Playwright)
+     - Check, from a clean clone:
+       a. Set up the database, run the migrations and run create-admin.
+       b. Log in and upload a sample PDF.
+       c. See the "Automatic extraction did not work…" notice, fill in the
+          fields, and publish.
+       d. The tender is listed as Open on /, and Detail shows every field plus a
+          working source link.
+       e. Unpublish it, and it is gone from /.
+       f. Logged out, /admin redirects to login and the admin API returns 401.
+       g. All suites pass, and every CLAUDE.md command works.
+
+     Still open (not blocking this slice)
+
+     - The Musafir / "Chapter 6" deployment reference is needed before the
+       deployment slice.
+
+     Spec disagreements (all resolved in T0)
+
+     1. counter-drone vs counter_drone → counter_drone.
+     2. state_name missing from the frontend required list → added
+        conditionally.
+     3. Admin list status default open → all.
+     4. Dashboard Closed state → published + is_closed.
+     5. Creating a tender without a PDF → stub extractor.
+     6. No ExtractionRun fields for the failure reason or truncation → added.
+     7. timed_out → failed mapping → stated.
+     8. Re-extract button undescribed → noted as a later addition.
+     9. Goal-spec open questions vs "none" elsewhere → turned into decisions.
+     10. No unpublish confirmation text → text added.
+
+  Ran 1 shell command (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+✻ Brewed for 50s · done 11:10 PM
+
+❯ Continue with T0: update the four specs. Show me each change before saving    
+  it.                                                                           
+
+⏺ No branch, then. I'll edit the specs in place on main. I'll make one edit at a
+  time, and each one shows its diff for your approval before it's saved. I'll
+  start with goal-spec.md.
+
+⏺ Update(specs/goal-spec.md)
+  ⎿  Added 4 lines, removed 4 lines
+      77  | Published | A tender the admin has confirmed. Visible to ever
+          yone. |
+      78  | Closed | A published tender whose bid closing date has passed
+          . |
+      79  
+      80 -## Open Questions                                              
+      81 -1. Should OEM users be able to suggest a tender they have found
+         -? (Assumed **no** for v1.)                                     
+      82 -2. Is one admin account enough, or will more people add tenders
+         -? (Assumed **one**.)                                           
+      83 -3. What exactly counts as "counter-drone" for the category filt
+         -er? Detection-only systems too, or only systems that can neutra
+         -lise a drone?                                                  
+      80 +## Decisions Made                                              
+      81 +1. OEM users cannot suggest tenders in v1.                     
+      82 +2. There is one admin account.                                 
+      83 +3. "Counter-drone" covers detection-only systems (radars, RF de
+         +tectors) as well as systems that stop a drone (jammers, interce
+         +ptors).                                                        
+
+⏺ Update(specs/goal-spec.md)
+  ⎿  Added 1 line, removed 1 line
+      70  | RFP | Request for Proposal. A formal request for bids against
+           stated requirements. |
+      71  | Issuing body | The organisation that published the tender, e.
+          g. Ministry of Defence, Indian Army, BSF, a state police force.
+           |
+      72  | Buyer type | Central (Union government bodies and PSUs) or St
+          ate (state government bodies). |
+      73 -| Category | Drone (UAVs and their systems) or Counter-drone (d
+         -etection, jamming, interception). |                            
+      73 +| Category | Drone (UAVs and their systems) or Counter-drone (s
+         +ystems that detect drones, such as radars and RF detectors, inc
+         +luding detection-only systems, and systems that stop them, such
+         + as jammers and interceptors). |                               
+      74  | Bid closing date | The last date to submit a bid or response,
+           as stated in the document. |
+      75  | EMD | Earnest money deposit, the security amount a bidder pay
+          s to take part. |
+      76  | Draft | A tender whose fields have been extracted but not yet
+           confirmed by the admin. Not public. |
+
+⏺ Update(specs/goal-spec.md)
+  ⎿  Added 1 line, removed 1 line
+      1  # Goal Spec: Drone Tender Desk (working name)
+      2  
+      3 -> Defines *what* we're building and *why*. The frontend spec, ba
+        -ckend spec and API contract derive from this document. Draft v0.
+        -1, owner: VJ.                                                   
+      3 +> Defines *what* we're building and *why*. The frontend spec, ba
+        +ckend spec and API contract derive from this document. Draft v0.
+        +2, owner: VJ.                                                   
+      4  
+      5  ## 1. Problem Statement
+      6  Indian government RFIs and RFPs for drones and counter-drone sys
+         tems are published in many separate places: the Ministry of Defe
+         nce website, the GeM portal, the Central Public Procurement Port
+         al, state police websites, PSUs and research institutes. Each on
+         e is a long PDF in a different format. A drone or anti-drone OEM
+          today has to check all these sites by hand, then read every doc
+         ument to find the few facts that decide whether to bid: what is 
+         being bought, how many, the key technical requirements, who is e
+         ligible, and when bids close. Opportunities are missed and readi
+         ng time is wasted.
+
+⏺ goal-spec.md is done. Next is frontend-spec.md.
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 1 line, removed 1 line
+      1  # Frontend Spec: Drone Tender Desk
+      2  
+      3 -> Describes the screens, flows and visible behaviour. Derived fr
+        -om `goal-spec.md`. Draft v0.1, owner: VJ.                       
+      3 +> Describes the screens, flows and visible behaviour. Derived fr
+        +om `goal-spec.md`. Draft v0.2, owner: VJ.                       
+      4  
+      5  ## 1. Tech Stack
+      6  - React with Vite, React Router for pages, React Query for serve
+         r data.
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 1 line, removed 1 line
+       5  ## 1. Tech Stack
+       6  - React with Vite, React Router for pages, React Query for serv
+          er data.
+       7  - Tailwind CSS for styling.
+       8 -- Deployed on Vercel. The backend address comes from the build-
+         -time variable `VITE_API_BASE_URL` and is never hardcoded.      
+       8 +- Deployed on Vercel. The backend address comes from the build-
+         +time variable `VITE_API_BASE_URL` and is never hardcoded. It is
+         + the server's address without the `/api` path (for example `htt
+         +p://localhost:8000`); the frontend adds `/api` itself.         
+       9  
+      10  ## 2. Application Structure
+      11  Two areas:
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 2 lines, removed 1 line
+      32  - **Search box:** matches words in the title, issuing body, ite
+          m and technical requirements (for example "jammer" or "radar").
+      33  - **Filters:** category, document type, buyer type, status (Ope
+          n, Closed, All). Default is status Open, all others All. Search
+           and filters work together.
+      34  - **Sort:** open tenders by closing date, soonest first. Closed
+           tenders by closing date, most recent first.
+      35 -- Search and filters are kept in the URL (for example `/?q=jamm
+         -er&category=counter-drone&status=open`) so a filtered view can 
+         -be shared or bookmarked.                                       
+      35 +- Search and filters are kept in the URL (for example `/?q=jamm
+         +er&category=counter_drone&status=open`) so a filtered view can 
+         +be shared or bookmarked. URL values are the same as the API val
+         +ues.                                                           
+      36 +- **Pagination:** 20 tenders per page, with simple Previous and
+         + Next buttons. The page number is kept in the URL too.         
+      37  - Clicking a row opens Tender Detail.
+      38  
+      39  ### 4.2 Tender Detail (`/tenders/:tenderId`)
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 2 lines, removed 2 lines
+      48  - Wrong credentials show an inline message: "Incorrect username
+           or password." The password field is cleared, the username is k
+          ept.
+      49  
+      50  ### 4.4 Admin Dashboard (`/admin`)
+      51 -- Table of all tenders with title, issuing body, closing date, 
+         -and state: Draft, Published, or Closed.                        
+      51 +- Table of all tenders with title, issuing body, closing date, 
+         +and state: Draft, Published, or Closed. Closed is shown only fo
+         +r a published tender whose `is_closed` is true; a draft is alwa
+         +ys shown as Draft.                                             
+      52  - "Add tender" button.
+      53 -- Actions per row: Review/Edit, Publish (drafts only), Unpublis
+         -h (published only).                                            
+      53 +- Actions per row: Review/Edit, Publish (drafts only), Unpublis
+         +h (published only). Unpublish asks for confirmation: "Unpublish
+         + this tender? It will be hidden from the public list."         
+      54  
+      55  ### 4.5 Add Tender (`/admin/tenders/new`)
+      56  - PDF file picker (PDF only, maximum size to be set in the back
+          end spec).
+
+⏺ Update(specs/frontend-spec.md)  ⎿  Added 1 line, removed 1 line
+      61  ### 4.6 Review Tender (`/admin/tenders/:tenderId/review`)
+      62  - The PDF on one side and the editable fields on the other (on 
+          mobile, stacked with a "View PDF" link).
+      63  - Every field is editable. Fields the AI could not find are emp
+          ty and marked "Not found in document."
+      64 -- Required before publishing: title, issuing body, document typ
+         -e, category, buyer type, bid closing date, source URL.         
+      64 +- Required before publishing: title, issuing body, document typ
+         +e, category, buyer type, bid closing date, source URL, and stat
+         +e (only when buyer type is State).                             
+      65  - Buttons: "Save draft" and "Publish." Publish asks for confirm
+          ation: "Publish this tender? It will be visible to everyone."
+      66  
+      67  ## 5. States for Every Screen
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 1 line, removed 1 line
+       98  - **Add a tender:** log in → Admin Dashboard → Add tender → ch
+           oose PDF, enter source URL → Extract → Review Tender → correct
+            fields → Publish → the tender appears on the public list.
+       99  - **Fix a published tender:** Admin Dashboard → Review/Edit → 
+           change fields → Save. Changes are visible to the public immedi
+           ately.
+      100  - **Remove a tender from public view:** Admin Dashboard → Unpu
+           blish → confirm. It returns to Draft and disappears from the p
+           ublic list.
+      101 -- **Log out:** click Logout → sent to the public Tender List. 
+      101 +- **Log out:** click Logout → sent to the public Tender List. 
+          +Logout happens in the browser only: the stored token is delete
+          +d. There is no logout API call, and the token stays valid on t
+          +he server until it expires.                                   
+      102  
+      103  ## 7. UI/UX Requirements
+      104  - Responsive: usable on a phone screen of 375 px width and on 
+           desktop.
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 1 line, removed 1 line
+      103  ## 7. UI/UX Requirements
+      104  - Responsive: usable on a phone screen of 375 px width and on 
+           desktop.
+      105  - Dates always shown as day month year with the month as a wor
+           d, for example 14 Nov 2026, so 03/04 is never misread.
+      106 -- A closing date within 7 days is highlighted as "Closing soon
+          -."                                                            
+      106 +- A closing date within 7 days is highlighted as "Closing soon
+          +." "Today" for this is today's date in India time (Asia/Kolkat
+          +a), the same as the backend uses for Open and Closed.         
+      107  - Colours and font: to decide.
+      108  
+      109  ## 8. Auth and Permissions (client side)
+
+⏺ Update(specs/frontend-spec.md)
+  ⎿  Added 6 lines, removed 1 line
+      120  3. Showing the PDF page each extracted value came from is Post
+           -MVP.
+      121  4. Styling uses Tailwind CSS.
+      122  
+      123 -## 11. Open Questions                                         
+      123 +5. Logout is handled in the browser only (see User Flows).    
+      124 +                                                              
+      125 +## 11. Later Additions                                        
+      126 +- A "Re-extract" button on Review Tender (drafts only) that ru
+          +ns `POST /api/admin/tenders/{id}/extract` again on the stored 
+          +PDF. Not in the first build.                                  
+      127 +                                                              
+      128 +## 12. Open Questions                                         
+      129  None at present.
+
+⏺ frontend-spec.md is done. Next is backend-spec.md.
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 1 line, removed 1 line
+      1  # Backend Spec: Drone Tender Desk
+      2  
+      3 -> Describes the data, rules, security and integrations behind th
+        -e screens in `frontend-spec.md`. Derived from `goal-spec.md`. Dr
+        -aft v0.1, owner: VJ.                                            
+      3 +> Describes the data, rules, security and integrations behind th
+        +e screens in `frontend-spec.md`. Derived from `goal-spec.md`. Dr
+        +aft v0.2, owner: VJ.                                            
+      4  
+      5  ## 1. Tech Stack
+      6  - Python with FastAPI.
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 2 lines
+      61  | prompt_version | text | e.g. "v1" |
+      62  | raw_output | JSON | what the model returned, before any admin
+           edits |
+      63  | outcome | enum: succeeded, partial, failed, timed_out | |
+      64 +| failure_reason | text | optional; why the run did not succeed
+         +, e.g. "no readable text", "timeout", "invalid JSON", "API erro
+         +r" |                                                           
+      65 +| input_truncated | boolean | default false; true if the PDF te
+         +xt was cut to fit the model's input limit |                    
+      66  | duration_ms | integer | |
+      67  | input_tokens, output_tokens | integer | for cost tracking |
+      68  | created_at | timestamp | |
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 3 lines, removed 1 line
+      81  7. **Nothing is invented.** The extraction prompt tells the mod
+          el to leave a field empty if the document does not state it. Th
+          e code also enforces this by ignoring any field it cannot valid
+          ate.
+      82  8. **Re-extraction is allowed only on drafts.** Running extract
+          ion again overwrites the draft's fields but keeps the earlier E
+          xtractionRun records.
+      83  9. **Unpublishing** sets status back to draft. The tender disap
+          pears from public endpoints at once.
+      84 -10. **Search** matches the query words, ignoring case, in title
+         -, issuing_body, item_and_quantity and technical_requirements.  
+      84 +10. **Search** matches the query words, ignoring case, in title
+         +, issuing_body, item_and_quantity and technical_requirements. E
+         +ach word is a substring match (`ILIKE`), and a tender must matc
+         +h every word (AND), though different words may match different 
+         +fields. To revisit (for example with Postgres full-text search)
+         + if the 500 ms target is missed.                               
+      85 +11. **Extraction outcome on the Tender.** An ExtractionRun outc
+         +ome of `timed_out` sets the Tender's extraction_status to `fail
+         +ed`. The other outcomes carry over unchanged.                  
+      86 +12. **Timestamps** in API responses are given in India time (`+
+         +05:30`).                                                       
+      87  
+      88  ## 5. Authentication and Authorization
+      89  - Admin logs in with username and password and receives a signe
+          d token (JWT) that expires after 8 hours.
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 2 lines, removed 1 line
+       96  ## 6. Third-Party Integrations
+       97  
+       98  ### Claude API (extraction service)
+       99 -- **Input:** the text read from the PDF. If the PDF has almost
+          - no text (under 200 characters), extraction is not attempted a
+          -nd the outcome is "failed" with reason "no readable text."    
+       99 +- **Stub for early development:** until the Claude call is bui
+          +lt, the extraction service is a stub that always returns outco
+          +me "failed" with failure_reason "extraction not enabled", mode
+          +l_name "stub" and prompt_version "none". Every endpoint behave
+          +s as it does after a real extraction failure.                 
+      100 +- **Input:** the text read from the PDF. If the PDF has almost
+          + no text (under 200 characters), extraction is not attempted a
+          +nd the outcome is "failed" with failure_reason "no readable te
+          +xt."                                                          
+      101  - **Output:** a fixed JSON structure with one key for every ex
+           tractable Tender field. The response is checked against this s
+           tructure in code.
+      102  - **Time limit:** 60 seconds. On timeout, the outcome is "time
+           d_out" and the draft keeps all fields empty.
+      103  - **On any failure** (timeout, API error, invalid JSON): the d
+           raft is still created with source_url and the PDF saved, all e
+           xtractable fields empty, extraction_status "failed." The endpo
+           int still succeeds so the admin can fill in fields by hand.
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 1 line, removed 1 line
+      101  - **Output:** a fixed JSON structure with one key for every ex
+           tractable Tender field. The response is checked against this s
+           tructure in code.
+      102  - **Time limit:** 60 seconds. On timeout, the outcome is "time
+           d_out" and the draft keeps all fields empty.
+      103  - **On any failure** (timeout, API error, invalid JSON): the d
+           raft is still created with source_url and the PDF saved, all e
+           xtractable fields empty, extraction_status "failed." The endpo
+           int still succeeds so the admin can fill in fields by hand.
+      104 -- **Long documents:** if the text is longer than the model's i
+          -nput limit, send the first part only and record that it was cu
+          -t in the ExtractionRun. (To revisit during evaluation.)       
+      104 +- **Long documents:** if the text is longer than the model's i
+          +nput limit, send the first part only and set input_truncated t
+          +o true in the ExtractionRun. (To revisit during evaluation.)  
+      105  - **The API key** is read from an environment variable on the 
+           server. It is never logged, never stored in the repository and
+            never sent in any response.
+      106  
+      107  ### Amazon S3
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 3 lines, removed 2 lines
+      122  - An AI failure is not an error for the endpoint. It is report
+           ed through extraction_status and fields_not_found.
+      123  
+      124  ## 9. Environment and Deployment
+      125 -- **Environment variables:** `DATABASE_URL`, `ANTHROPIC_API_KE
+          -Y`, `JWT_SECRET`, `S3_BUCKET_NAME`, `ALLOWED_ORIGINS` (the Ver
+          -cel domains for CORS).                                        
+      126 -- **Local development:** PostgreSQL in Docker; uploaded files 
+          -may be saved to a local folder instead of S3.                 
+      125 +- **Environment variables:** `DATABASE_URL`, `ANTHROPIC_API_KE
+          +Y`, `JWT_SECRET`, `S3_BUCKET_NAME`, `UPLOAD_DIR`, `ALLOWED_ORI
+          +GINS` (the Vercel domains for CORS).                          
+      126 +- **File storage:** if `S3_BUCKET_NAME` is set, PDFs are store
+          +d in S3. Otherwise they are saved in the local folder named by
+          + `UPLOAD_DIR`.                                                
+      127 +- **Local development:** PostgreSQL in Docker; uploaded files 
+          +saved to `UPLOAD_DIR`.                                        
+      128  - **Cloud:** AWS for the backend, database and S3 bucket, set 
+           up the way Chapter 6 shows for Musafir (Terraform, GitHub Acti
+           ons). Details go in a later deployment spec.
+      129  - **Backups:** the database is backed up daily. Restoring a kn
+           own tender is part of the deployment acceptance checks.
+      130  
+
+⏺ Update(specs/backend-spec.md)
+  ⎿  Added 2 lines
+      132  1. The Claude model is chosen during the evaluation phase by c
+           omparing a cheaper and a stronger model on the same test PDFs.
+            Development starts with a mid-range model.
+      133  2. Tenders can only be unpublished in v1, not deleted. This ke
+           eps a record of every tender that was ever shown.
+      134  3. Amendments (corrigenda) are handled in v1 by the admin edit
+           ing the fields by hand. Linking an amendment to its original t
+           ender is Post-MVP.
+      135 +4. The first build uses the extraction stub (see section 6). T
+          +he admin fills in every field by hand.                        
+      136 +5. There is no logout endpoint. Logout deletes the token in th
+          +e browser, and the token stays valid until it expires.        
+      137  
+      138  ## 11. Open Questions
+      139  None at present.
+
+⏺ backend-spec.md is done. Last is api-contract.md.
+
+⏺ Update(specs/api-contract.md)
+  ⎿  Added 1 line, removed 1 line
+      1  # API Contract: Drone Tender Desk
+      2  
+      3 -> The agreement between the frontend and the backend. Both sides
+        - are built against this document without needing to see each oth
+        -er's code. Derived from `frontend-spec.md` and `backend-spec.md`
+        -. Draft v0.1, owner: VJ.                                        
+      3 +> The agreement between the frontend and the backend. Both sides
+        + are built against this document without needing to see each oth
+        +er's code. Derived from `frontend-spec.md` and `backend-spec.md`
+        +. Draft v0.2, owner: VJ.                                        
+      4  
+      5  ## 1. General Rules
+      6  - **Base path:** all endpoints start with `/api`. The full addre
+         ss comes from `VITE_API_BASE_URL` in the frontend.
+
+⏺ Update(specs/api-contract.md)
+  ⎿  Added 1 line, removed 1 line
+      3  > The agreement between the frontend and the backend. Both sides
+          are built against this document without needing to see each oth
+         er's code. Derived from `frontend-spec.md` and `backend-spec.md`
+         . Draft v0.2, owner: VJ.
+      4  
+      5  ## 1. General Rules
+      6 -- **Base path:** all endpoints start with `/api`. The full addre
+        -ss comes from `VITE_API_BASE_URL` in the frontend.              
+      6 +- **Base path:** all endpoints start with `/api`. The server add
+        +ress comes from `VITE_API_BASE_URL` in the frontend, which does 
+        +not include `/api` (for example `http://localhost:8000`).       
+      7  - **Format:** requests and responses are JSON, except the PDF up
+         load, which is `multipart/form-data`.
+      8  - **Dates** (calendar days) are strings in `YYYY-MM-DD` form, fo
+         r example `"2026-11-14"`.
+      9  - **Timestamps** are ISO 8601 strings with a time zone, for exam
+         ple `"2026-10-12T22:30:00+05:30"`.
+
+⏺ Update(specs/api-contract.md)
+  ⎿  Added 1 line, removed 1 line
+       6  - **Base path:** all endpoints start with `/api`. The server ad
+          dress comes from `VITE_API_BASE_URL` in the frontend, which doe
+          s not include `/api` (for example `http://localhost:8000`).
+       7  - **Format:** requests and responses are JSON, except the PDF u
+          pload, which is `multipart/form-data`.
+       8  - **Dates** (calendar days) are strings in `YYYY-MM-DD` form, f
+          or example `"2026-11-14"`.
+       9 -- **Timestamps** are ISO 8601 strings with a time zone, for exa
+         -mple `"2026-10-12T22:30:00+05:30"`.                            
+       9 +- **Timestamps** are ISO 8601 strings in India time (`+05:30`),
+         + for example `"2026-10-12T22:30:00+05:30"`.                    
+      10  - **Empty fields** are `null`, never an empty string and never 
+          a made-up value.
+      11  - **Admin endpoints** need the header `Authorization: Bearer <t
+          oken>`.
+      12  - **Open or Closed** is worked out by the backend (India time) 
+          and sent as `is_closed`. The frontend never calculates it.
+
+⏺ Update(specs/api-contract.md)
+  ⎿  Added 1 line, removed 1 line
+      85  
+      86  | Query parameter | Type | Default | Notes |
+      87  |---|---|---|---|
+      88 -| `q` | text | none | Search words, ignoring case |            
+      88 +| `q` | text | none | Search words, ignoring case. A tender mus
+         +t contain every word, each as part of any of title, issuing_bod
+         +y, item_and_quantity or technical_requirements |               
+      89  | `category` | `drone`, `counter_drone` | all | |
+      90  | `document_type` | `RFI`, `RFP` | all | |
+      91  | `buyer_type` | `central`, `state` | all | |
+
+⏺ Update(specs/api-contract.md)
+  ⎿  Added 1 line, removed 1 line
+      113  - **429:** more than 5 attempts in a minute from the same addr
+           ess.
+      114  
+      115  ### `GET /api/admin/tenders`
+      116 -All tenders, drafts included. Same query parameters as the pub
+          -lic list, plus `status_admin` with values `draft`, `published`
+          -, `all` (default `all`).                                      
+      116 +All tenders, drafts included. Same query parameters as the pub
+          +lic list, except that `status` defaults to `all` here (not `op
+          +en`), plus `status_admin` with values `draft`, `published`, `a
+          +ll` (default `all`). The dashboard's "Closed" state means `sta
+          +tus` is `published` and `is_closed` is true.                  
+      117  - **200:** `{ "items": [TenderAdmin], "total": ..., "page": ..
+           ., "page_size": ... }`
+      118  - **401:** not logged in.
+      119  
+
+⏺ Update(specs/api-contract.md)
+  ⎿  Added 2 lines
+      112  - **401:** wrong username or password. The message does not sa
+           y which one was wrong.
+      113  - **429:** more than 5 attempts in a minute from the same addr
+           ess.
+      114  
+      115 +There is no logout endpoint. The frontend logs out by deleting
+          + the token; the token stays valid until `expires_at`.         
+      116 +                                                              
+      117  ### `GET /api/admin/tenders`
+      118  All tenders, drafts included. Same query parameters as the pub
+           lic list, except that `status` defaults to `all` here (not `op
+           en`), plus `status_admin` with values `draft`, `published`, `a
+           ll` (default `all`). The dashboard's "Closed" state means `sta
+           tus` is `published` and `is_closed` is true.
+      119  - **200:** `{ "items": [TenderAdmin], "total": ..., "page": ..
+           ., "page_size": ... }`
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ T0 is done: all four specs are updated and committed to main as 51abb67 Record
+  v0.2 spec decisions. Nothing is pushed. I made the commit directly, as T0 in
+  the plan says, so it didn't go through a separate approval step. If you'd
+  rather change anything first, I can amend it.
+
+  Changes by file
+  - goal-spec.md
+    - The Open Questions are replaced by Decisions Made: no OEM suggestions in
+      v1, one admin account, and your counter-drone definition.
+    - The Glossary entry for Category now uses the same counter-drone
+      definition.
+  - frontend-spec.md
+    - The example filter URL now uses counter_drone.
+    - The Tender List gets Previous/Next pagination.
+    - The dashboard shows Closed only for published tenders.
+    - Unpublish asks for confirmation.
+    - State is required to publish when the buyer type is State.
+    - "Closing soon" uses India time.
+    - Logout happens in the browser only.
+    - VITE_API_BASE_URL does not include /api.
+    - A new §11 "Later Additions" holds the re-extract button.
+  - backend-spec.md
+    - ExtractionRun gains failure_reason and input_truncated.
+    - Search matches every word, each as a case-insensitive substring.
+    - A timed_out run sets the tender's extraction status to failed.
+    - Timestamps are in India time.
+    - New UPLOAD_DIR setting, with S3 used only when S3_BUCKET_NAME is set.
+    - The extraction stub is described.
+    - Two new Decisions: the first build uses the stub, and there is no logout
+      endpoint.
+  - api-contract.md
+    - VITE_API_BASE_URL does not include /api.
+    - Timestamps are in India time.
+    - The search rule is spelled out.
+    - The admin list's status defaults to all.
+    - Logout has a note saying there is no endpoint.
+  - All four specs are now marked Draft v0.2.
+
+  Checks
+  - Only specs/ changed: 42 lines added, 26 removed.
+  - counter-drone now appears only in ordinary sentences, not as a filter value.
+  - Every remaining "Open Questions" section says "None at present."
+
+  Before T1: you turned down creating the slice-1 branch, so for now I'm working
+  on main. Should T1 onward also go on main, or on a branch you name?
+
+✻ Sautéed for 36s · done 11:13 PM
+
+❯ Use a new branch called slice-1 for T1 onward. Keep the T0 spec commit on     
+  main.                                                                         
+
+  Ran 2 shell commands (ctrl+o to expand)
+⏺ User answered Claude's questions:
+  ⎿  · The plan says Python 3.12 + uv, but this Mac has Python 3.14.6 and no uv.
+     Which should CLAUDE.md and the backend use? → Install uv via Homebrew 
+     (Recommended)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Now T1. Here's CLAUDE.md; the Write prompt shows you the full content before
+  it's saved.
+
+⏺ Write(CLAUDE.md)
+  ⎿  Wrote 67 lines to CLAUDE.md
+       1 # Drone Tender Desk
+       3 A single place for Indian drone and counter-drone tenders (RFIs/
+         RFPs). The admin adds and publishes tenders; the public browses 
+       4 
+       6 - `specs/` holds the source of truth: `goal-spec.md`, `frontend-
+         spec.md`, `backend-spec.md` and `api-contract.md`.
+         cs are silent on something that matters, **stop and ask**. Don't
+          guess, and don't quietly "fix" the spec.
+         ch build against it, not against each other's code.
+      10 ## Repo layout
+     … +87 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ I've created branch slice-1 from main, and T1 is committed on it as a217eee.
+  The spec commit 51abb67 stays on main underneath it.
+
+  CLAUDE.md covers:
+  - Specs: specs/ is the source of truth, and when code and specs disagree
+    you'll be asked rather than the code guessing.
+  - Repo layout: the planned folders for the backend, frontend and database
+    setup.
+  - Commands: a table for the database, backend and frontend, plus the
+    end-to-end test.
+  - Conventions: the rules from the specs, such as the error format, empty
+    fields as null, Open/Closed worked out in India time, drafts never public,
+    and no secrets.
+  - Slice scope: what slice 1 covers and what it doesn't.
+
+  Tooling: I installed uv 0.13.0 with Homebrew, as you chose. Node is v26.8.1,
+  which meets the "Node 20 or later" line in CLAUDE.md.
+
+  Check status: the file exists. None of its commands have been run yet, because
+  the code they need doesn't exist. T12 runs every command in that table.
+
+  Next is T2: docker-compose.yml, .env.example and .gitignore, checked by
+  starting Postgres and confirming both databases exist.
+
+✻ Worked for 42s · done 11:15 PM
+
+❯ Commit T1 on the slice-1 branch, then continue with T2. Commit after each     
+  task from now on.                                                             
+
+⏺ T1 is already committed on slice-1 (a217eee), so there's nothing more to
+  commit for it. Moving on to T2.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+⏺ Docker is running and port 5432 is free.
+
+⏺ Write(docker-compose.yml)
+  ⎿  Wrote 21 lines to docker-compose.yml
+       1 services:
+       2   db:
+       3     image: postgres:16
+       4     environment:
+       5       POSTGRES_USER: tender
+       6       POSTGRES_PASSWORD: tender
+       7       POSTGRES_DB: tender_desk
+       8     ports:
+       9       - "5432:5432"
+      10     volumes:
+     … +12 lines (ctrl+o to expand)
+
+⏺ Write(docker/initdb/01-create-test-db.sql)
+  ⎿  Wrote 2 lines to docker/initdb/01-create-test-db.sql
+      1 -- Separate database for the backend test suite, so tests never t
+        ouch dev data.
+      2 CREATE DATABASE tender_desk_test OWNER tender;
+
+⏺ Write(.env.example)
+  ⎿  Wrote 17 lines to .env.example
+       1 # Copy to .env and fill in. Never commit .env.
+       2 
+       4 DATABASE_URL=postgresql+psycopg://tender:tender@localhost:5432/t
+         ender_desk
+       5 TEST_DATABASE_URL=postgresql+psycopg://tender:tender@localhost:5
+       6 # Generate with: python3 -c "import secrets; print(secrets.token
+         _urlsafe(48))"
+       7 JWT_SECRET=
+       9 ALLOWED_ORIGINS=http://localhost:5173
+      10 # Uploaded PDFs are saved here when S3_BUCKET_NAME is empty
+     … +10 lines (ctrl+o to expand)
+
+⏺ Write(.gitignore)
+  ⎿  Wrote 26 lines to .gitignore
+       1 # Secrets
+       2 .env
+       3 .env.*
+       4 !.env.example
+       5 
+       6 # Uploaded PDFs (local storage)
+       7 uploads/
+       8 backend/uploads/
+       9 
+      10 # Python
+     … +16 lines (ctrl+o to expand)
+
+⏺ Now the check: start Postgres, wait for it to be healthy, and confirm both
+  databases exist.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+⏺ T2 is done and committed on slice-1 as 94e7bb4.
+
+  Files added:
+  - docker-compose.yml: a db service running postgres:16. It uses user, password
+    and database name tender/tender/tender_desk, port 5432, a volume called
+    db-data, and a health check.
+  - docker/initdb/01-create-test-db.sql: creates a separate tender_desk_test
+    database so tests never touch dev data. It only runs when the volume is
+    first created.
+  - .env.example: every variable from the backend spec, plus TEST_DATABASE_URL.
+    JWT_SECRET is blank, with a one-line command to generate one.
+    ANTHROPIC_API_KEY and S3_BUCKET_NAME are blank because this slice doesn't
+    use them. VITE_API_BASE_URL is http://localhost:8000, with no /api.
+  - .gitignore: keeps .env (the example file is still tracked), uploaded PDFs,
+    Python environments and caches, node_modules, build output, test reports and
+    editor files out of git.
+
+  Check passed: the container started and reported healthy, pg_isready showed it
+  accepting connections, and both tender_desk and tender_desk_test exist.
+
+  One addition to the plan: the TEST_DATABASE_URL variable, which the backend
+  tests will use from T3 onward.
+
+  The Postgres container is still running. Next is T3: the backend skeleton,
+  /api/health, and the error format.
+
+✻ Worked for 45s · done 11:17 PM
+
+❯ Did T2's check pass, and is it committed?                                     
+
+⏺ Yes to both.
+
+  - Check passed: Postgres started and reported healthy, it accepted
+    connections, and both the tender_desk and tender_desk_test databases exist.
+  - Committed: the four T2 files are on slice-1 as 94e7bb4. That commit sits on
+    top of the T1 commit (a217eee) and the spec commit (51abb67).
+
+  Nothing has been pushed, and the Postgres container is still running for T3.
+
+✻ Baked for 2s · done 11:18 PM
