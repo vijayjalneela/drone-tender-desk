@@ -1,11 +1,11 @@
 # Frontend Spec: Drone Tender Desk
 
-> Describes the screens, flows and visible behaviour. Derived from `goal-spec.md`. Draft v0.1, owner: VJ.
+> Describes the screens, flows and visible behaviour. Derived from `goal-spec.md`. Draft v0.2, owner: VJ.
 
 ## 1. Tech Stack
 - React with Vite, React Router for pages, React Query for server data.
 - Tailwind CSS for styling.
-- Deployed on Vercel. The backend address comes from the build-time variable `VITE_API_BASE_URL` and is never hardcoded.
+- Deployed on Vercel. The backend address comes from the build-time variable `VITE_API_BASE_URL` and is never hardcoded. It is the server's address without the `/api` path (for example `http://localhost:8000`); the frontend adds `/api` itself.
 
 ## 2. Application Structure
 Two areas:
@@ -32,7 +32,8 @@ A common header on every page shows the site name, a link to the tender list and
 - **Search box:** matches words in the title, issuing body, item and technical requirements (for example "jammer" or "radar").
 - **Filters:** category, document type, buyer type, status (Open, Closed, All). Default is status Open, all others All. Search and filters work together.
 - **Sort:** open tenders by closing date, soonest first. Closed tenders by closing date, most recent first.
-- Search and filters are kept in the URL (for example `/?q=jammer&category=counter-drone&status=open`) so a filtered view can be shared or bookmarked.
+- Search and filters are kept in the URL (for example `/?q=jammer&category=counter_drone&status=open`) so a filtered view can be shared or bookmarked. URL values are the same as the API values.
+- **Pagination:** 20 tenders per page, with simple Previous and Next buttons. The page number is kept in the URL too.
 - Clicking a row opens Tender Detail.
 
 ### 4.2 Tender Detail (`/tenders/:tenderId`)
@@ -47,9 +48,9 @@ A common header on every page shows the site name, a link to the tender list and
 - Wrong credentials show an inline message: "Incorrect username or password." The password field is cleared, the username is kept.
 
 ### 4.4 Admin Dashboard (`/admin`)
-- Table of all tenders with title, issuing body, closing date, and state: Draft, Published, or Closed.
+- Table of all tenders with title, issuing body, closing date, and state: Draft, Published, or Closed. Closed is shown only for a published tender whose `is_closed` is true; a draft is always shown as Draft.
 - "Add tender" button.
-- Actions per row: Review/Edit, Publish (drafts only), Unpublish (published only).
+- Actions per row: Review/Edit, Publish (drafts only), Unpublish (published only). Unpublish asks for confirmation: "Unpublish this tender? It will be hidden from the public list."
 
 ### 4.5 Add Tender (`/admin/tenders/new`)
 - PDF file picker (PDF only, maximum size to be set in the backend spec).
@@ -60,7 +61,7 @@ A common header on every page shows the site name, a link to the tender list and
 ### 4.6 Review Tender (`/admin/tenders/:tenderId/review`)
 - The PDF on one side and the editable fields on the other (on mobile, stacked with a "View PDF" link).
 - Every field is editable. Fields the AI could not find are empty and marked "Not found in document."
-- Required before publishing: title, issuing body, document type, category, buyer type, bid closing date, source URL.
+- Required before publishing: title, issuing body, document type, category, buyer type, bid closing date, source URL, and state (only when buyer type is State).
 - Buttons: "Save draft" and "Publish." Publish asks for confirmation: "Publish this tender? It will be visible to everyone."
 
 ## 5. States for Every Screen
@@ -97,12 +98,12 @@ Each criterion is written as "Given a state, the screen shows a behaviour."
 - **Add a tender:** log in → Admin Dashboard → Add tender → choose PDF, enter source URL → Extract → Review Tender → correct fields → Publish → the tender appears on the public list.
 - **Fix a published tender:** Admin Dashboard → Review/Edit → change fields → Save. Changes are visible to the public immediately.
 - **Remove a tender from public view:** Admin Dashboard → Unpublish → confirm. It returns to Draft and disappears from the public list.
-- **Log out:** click Logout → sent to the public Tender List.
+- **Log out:** click Logout → sent to the public Tender List. Logout happens in the browser only: the stored token is deleted. There is no logout API call, and the token stays valid on the server until it expires.
 
 ## 7. UI/UX Requirements
 - Responsive: usable on a phone screen of 375 px width and on desktop.
 - Dates always shown as day month year with the month as a word, for example 14 Nov 2026, so 03/04 is never misread.
-- A closing date within 7 days is highlighted as "Closing soon."
+- A closing date within 7 days is highlighted as "Closing soon." "Today" for this is today's date in India time (Asia/Kolkata), the same as the backend uses for Open and Closed.
 - Colours and font: to decide.
 
 ## 8. Auth and Permissions (client side)
@@ -119,5 +120,10 @@ Each criterion is written as "Given a state, the screen shows a behaviour."
 3. Showing the PDF page each extracted value came from is Post-MVP.
 4. Styling uses Tailwind CSS.
 
-## 11. Open Questions
+5. Logout is handled in the browser only (see User Flows).
+
+## 11. Later Additions
+- A "Re-extract" button on Review Tender (drafts only) that runs `POST /api/admin/tenders/{id}/extract` again on the stored PDF. Not in the first build.
+
+## 12. Open Questions
 None at present.
