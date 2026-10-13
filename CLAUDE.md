@@ -52,6 +52,7 @@ Tooling: Python 3.12 via uv, and Node 20 or later.
 - **Never invent extracted values.** Anything that can't be validated stays `null` and goes in `fields_not_found`.
 - **Secrets** (`ANTHROPIC_API_KEY`, `JWT_SECRET`, passwords) are never logged, committed, or sent to the browser. The frontend reads only `VITE_API_BASE_URL`, which excludes `/api`.
 - Admin endpoints check the JWT on the server every time. Hiding links in the UI is only a convenience.
+- **Settings** are validated at startup (`backend/app/config.py`). A bad or missing setting stops the server with one line per problem that names the variable but **never prints its value**; keep it that way when adding settings. `DATABASE_URL` may be a plain `postgresql://` address (the `psycopg` driver is added automatically).
 
 ## Current slice: Slice 1 (branch `slice-1`)
 The scope is a manual journey: the admin logs in, uploads a PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public List and Detail pages. It runs locally against Postgres in Docker.

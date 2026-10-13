@@ -23,7 +23,14 @@ def configure_logging() -> None:
 
 def create_app() -> FastAPI:
     configure_logging()
-    app = FastAPI(title="Drone Tender Desk API")
+    docs = settings.enable_api_docs
+    app = FastAPI(
+        title="Drone Tender Desk API",
+        # Off in production (backend-spec §7): the API's shape is not advertised.
+        docs_url="/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
