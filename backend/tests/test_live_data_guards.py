@@ -10,7 +10,7 @@ from app import cli
 from app.dbtarget import NotAllowed, describe, is_local, require_local
 from app.models import Admin
 
-NEON = "postgresql+psycopg://neondb_owner:s3cret-pw@ep-cool-name-123456.ap-southeast-1.aws.neon.tech/tender_desk?sslmode=require"
+NEON = "postgresql+psycopg://neondb_owner:s3cret-pw@ep-cool-name-123456.ap-southeast-1.aws.neon.tech/tender_desk?sslmode=require"  # secret-check: allow (fake, for tests)
 LOCAL_TEST = "postgresql+psycopg://tender:tender@localhost:5432/tender_desk_test"
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -26,7 +26,7 @@ BACKEND = Path(__file__).resolve().parents[1]
         ("postgresql+psycopg://u:p@[::1]/db", True),
         ("postgresql+psycopg:///db", True),  # unix socket
         (NEON, False),
-        ("postgresql+psycopg://u:p@db.internal/tender_desk", False),
+        ("postgresql+psycopg://u:p@db.internal/tender_desk", False),  # secret-check: allow (fake, for tests)
     ],
 )
 def test_is_local(url, local):
@@ -36,7 +36,7 @@ def test_is_local(url, local):
 def test_describe_never_shows_credentials():
     shown = describe(NEON)
 
-    assert shown == "ep-cool-name-123456.ap-southeast-1.aws.neon.tech/tender_desk"
+    assert shown == "ep-cool-name-123456.ap-southeast-1.aws.neon.tech/tender_desk"  # secret-check: allow (fake, for tests)
     assert "s3cret" not in shown and "neondb_owner" not in shown
 
 
@@ -137,7 +137,7 @@ def test_a_hosted_database_needs_a_typed_yes(cli_on, capsys, db):
 
     assert cli.main(["create-admin", "--username", "vj"]) == 0
     out = capsys.readouterr().out
-    assert "Database: ep-cool-name-123456.ap-southeast-1.aws.neon.tech/tender_desk" in out
+    assert "Database: ep-cool-name-123456.ap-southeast-1.aws.neon.tech/tender_desk" in out  # secret-check: allow (fake, for tests)
     assert "s3cret" not in out
     assert db.query(Admin).one().username == "vj"
 

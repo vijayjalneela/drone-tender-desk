@@ -21,7 +21,7 @@ def normalize_database_url(url: str) -> str:
     """
     scheme, sep, rest = url.partition("://")
     if not sep:
-        raise ValueError("must look like postgresql://user:password@host/database")
+        raise ValueError("must look like postgresql://user:password@host/database")  # secret-check: allow (format example)
     if scheme in ("postgres", "postgresql"):
         scheme = PSYCOPG_SCHEME
     if scheme != PSYCOPG_SCHEME:

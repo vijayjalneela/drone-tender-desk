@@ -7,7 +7,7 @@ from app import config
 from app.config import Settings, normalize_database_url
 
 SECRET = "s" * 40
-NEON = "ep-cool-name-123456.ap-southeast-1.aws.neon.tech"
+NEON = "ep-cool-name-123456.ap-southeast-1.aws.neon.tech"  # secret-check: allow (fake, for tests)
 
 
 def make(**overrides) -> Settings:
@@ -29,10 +29,10 @@ def isolated_env(monkeypatch):
     "given, expected",
     [
         (
-            f"postgresql://user:pw@{NEON}/tender_desk?sslmode=require&channel_binding=require",
-            f"postgresql+psycopg://user:pw@{NEON}/tender_desk?sslmode=require&channel_binding=require",
+            f"postgresql://user:pw@{NEON}/tender_desk?sslmode=require&channel_binding=require",  # secret-check: allow (fake, for tests)
+            f"postgresql+psycopg://user:pw@{NEON}/tender_desk?sslmode=require&channel_binding=require",  # secret-check: allow (fake, for tests)
         ),
-        ("postgres://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+        ("postgres://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),  # secret-check: allow (fake, for tests)
         ("postgresql+psycopg://u:p@localhost/db", "postgresql+psycopg://u:p@localhost/db"),
     ],
 )
@@ -41,7 +41,7 @@ def test_plain_postgres_addresses_get_the_psycopg_driver(given, expected):
     assert make(database_url=given).database_url == expected
 
 
-@pytest.mark.parametrize("bad", ["mysql://u:p@h/db", "postgresql+psycopg2://u:p@h/db", "localhost:5432/db"])
+@pytest.mark.parametrize("bad", ["mysql://u:p@h/db", "postgresql+psycopg2://u:p@h/db", "localhost:5432/db"])  # secret-check: allow (fake, for tests)
 def test_non_postgres_addresses_are_refused(bad):
     with pytest.raises(ValueError):
         make(database_url=bad)
