@@ -26,8 +26,9 @@ Free-plan behaviour the app must live with:
 
 **Backend (Render)**
 - Root directory: `backend`. Branch: `main`. Every push to `main` redeploys automatically.
-- Build: installs the locked dependencies with uv (exact command in the README).
-- Start: `alembic upgrade head`, then `uvicorn`, listening on Render's `$PORT` with forwarded headers trusted, so rate limits see each visitor's real address.
+- Python version: `.python-version` files (repo root and `backend/`) say `3.12`, and Render uses its newest 3.12. No `PYTHON_VERSION` setting is needed.
+- Build command: `uv sync --frozen --no-dev`. This installs exactly the locked packages, without test tools; Render supports uv because `backend/uv.lock` exists.
+- Start command: `bash render-start.sh`. It runs `alembic upgrade head` (a quick no-op when nothing is new; a failed migration stops the start), then `uvicorn` on Render's `$PORT`. uvicorn does not rewrite the visitor's address: the app reads it itself using `TRUSTED_PROXY_HOPS`.
 - Health check path: `/api/health`.
 
 **Frontend (Vercel)**
@@ -43,7 +44,6 @@ Free-plan behaviour the app must live with:
 | `ALLOWED_ORIGINS` | Config | Render | The exact Vercel address, e.g. `https://drone-tender-desk.vercel.app` |
 | `ENABLE_API_DOCS` | Config | Render | `false` |
 | `TRUSTED_PROXY_HOPS` | Config | Render | Measured at deployment (§7 check 5); start with `1` |
-| `PYTHON_VERSION` | Config | Render | `3.12.15` |
 | `VITE_API_BASE_URL` | Config (public: it is built into the frontend) | Vercel | The Render address, with no `/api` and no trailing slash |
 | Admin password | **Secret** | Nowhere but the owner's password manager | The database keeps only its hash |
 
