@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import settings
 from app.db import get_db
 from app.main import create_app
-from app.models import Admin
+from app.models import Admin, Tender
 from app.security import create_access_token, hash_password
 from app.storage import LocalStorage, get_storage
 
@@ -63,6 +63,32 @@ def storage(app: FastAPI, tmp_path: Path) -> LocalStorage:
     local = LocalStorage(tmp_path / "uploads")
     app.dependency_overrides[get_storage] = lambda: local
     return local
+
+
+PUBLISHABLE = {
+    "title": "Procurement of Counter Drone Systems",
+    "issuing_body": "Border Security Force",
+    "buyer_type": "central",
+    "document_type": "RFP",
+    "category": "counter_drone",
+    "source_url": "https://example.gov.in/tender117.pdf",
+}
+
+
+@pytest.fixture
+def make_tender(db: Session):
+    """Creates a tender row directly. Defaults to an empty failed-extraction draft."""
+
+    def make(**fields) -> Tender:
+        values = {"source_url": "https://example.gov.in/t.pdf", "extraction_status": "failed"}
+        values.update(fields)
+        tender = Tender(**values)
+        db.add(tender)
+        db.commit()
+        db.refresh(tender)
+        return tender
+
+    return make
 
 
 @pytest.fixture
