@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { vi } from 'vitest'
 
-import type { Page, TenderDetail, TenderSummary } from '../api/types'
+import type { Page, TenderAdmin, TenderDetail, TenderSummary } from '../api/types'
+import { AuthProvider } from '../auth/AuthContext'
+import { saveSession } from '../auth/session'
 import { routes } from '../routes'
 
 /** Renders the whole app at `path`, with a fresh query cache and no retry delays. */
@@ -16,10 +18,51 @@ export function renderApp(path: string) {
   const user = userEvent.setup()
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>,
   )
   return { router, user }
+}
+
+export const TEST_TOKEN = 'test-token'
+
+/** Starts the test with an admin already logged in (a stored, unexpired session). */
+export function signIn(expiresAt = '2999-01-01T00:00:00+05:30') {
+  saveSession({ token: TEST_TOKEN, expiresAt })
+}
+
+export function adminTender(overrides: Partial<TenderAdmin> = {}): TenderAdmin {
+  return {
+    ...detail(),
+    status: 'draft',
+    extraction_status: 'failed',
+    fields_not_found: [],
+    created_at: '2026-10-12T22:30:00+05:30',
+    updated_at: '2026-10-12T22:30:00+05:30',
+    published_at: null,
+    ...overrides,
+  }
+}
+
+/** A draft straight from the stub extractor: every extractable field empty and "not found". */
+export function emptyDraft(id = 5): TenderAdmin {
+  const extractable = [
+    'title', 'issuing_body', 'buyer_type', 'state_name', 'reference_number', 'document_type',
+    'category', 'item_and_quantity', 'technical_requirements', 'eligibility', 'emd',
+    'publish_date', 'bid_closing_date',
+  ] as const // fmt: skip
+  return adminTender({
+    id,
+    ...Object.fromEntries(extractable.map((name) => [name, null])),
+    is_closed: false,
+    fields_not_found: [...extractable],
+  })
+}
+
+export function apiError(status: number, code: string, message: string, fields?: { field: string; problem: string }[]) {
+  return { status, body: { error: { code, message, ...(fields ? { fields } : {}) } } }
 }
 
 type Reply = { status?: number; body: unknown } | 'network-error' | 'never'

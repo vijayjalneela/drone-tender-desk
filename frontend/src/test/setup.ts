@@ -8,6 +8,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  window.localStorage.clear()
   vi.useRealTimers()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
