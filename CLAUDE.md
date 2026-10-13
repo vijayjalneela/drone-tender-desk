@@ -3,7 +3,7 @@
 A single place for Indian drone and counter-drone tenders (RFIs/RFPs). The admin adds and publishes tenders; the public browses them.
 
 ## Source of truth
-- `specs/` holds the source of truth: `goal-spec.md`, `frontend-spec.md`, `backend-spec.md` and `api-contract.md`.
+- `specs/` holds the source of truth: `goal-spec.md`, `frontend-spec.md`, `backend-spec.md`, `api-contract.md` and `deployment-spec.md`.
 - Code follows the specs. If code and specs disagree, or the specs are silent on something that matters, **stop and ask**. Don't guess, and don't quietly "fix" the spec.
 - `api-contract.md` is the boundary. The frontend and backend each build against it, not against each other's code.
 
@@ -14,10 +14,13 @@ backend/          FastAPI app (Python 3.12, managed with uv)
   app/            routers/, services/, extraction/, models.py, schemas.py, ...
   alembic/        migrations
   tests/          pytest, against a real Postgres test database
-  scripts/        reset_e2e_db.py (wipes only *_e2e databases)
+  scripts/        reset_e2e_db.py (wipes only local *_e2e databases)
+  render-start.sh Render start command: alembic upgrade head, then uvicorn
 frontend/         React + Vite + TypeScript + Tailwind + React Router + React Query
   src/            api/, auth/, components/, lib/, pages/, pages/admin/
   e2e/            Playwright journey test
+  vercel.json     every path serves index.html (deep links on Vercel)
+scripts/          check_secrets.py + install-git-hooks.sh (pre-commit secret check)
 docker-compose.yml  local PostgreSQL 16 (dev and _test databases)
 ```
 
@@ -39,6 +42,8 @@ Run from the repo root unless noted. Copy `.env.example` to `.env` first.
 | Frontend lint | `cd frontend && npm run lint` |
 | End-to-end browser (once) | `cd frontend && npx playwright install chromium` |
 | End-to-end test | `cd frontend && npm run test:e2e` (only the database must be running; it starts its own backend on 8001 and frontend on 5174 against the throwaway `tender_desk_e2e` database) |
+| Install the secret check (once per clone) | `bash scripts/install-git-hooks.sh` |
+| Secret check, whole repo | `python3 scripts/check_secrets.py --all` |
 
 Tooling: Python 3.12 via uv, and Node 20 or later.
 
@@ -54,18 +59,23 @@ Tooling: Python 3.12 via uv, and Node 20 or later.
 - Admin endpoints check the JWT on the server every time. Hiding links in the UI is only a convenience.
 - **Settings** are validated at startup (`backend/app/config.py`). A bad or missing setting stops the server with one line per problem that names the variable but **never prints its value**; keep it that way when adding settings. `DATABASE_URL` may be a plain `postgresql://` address (the `psycopg` driver is added automatically).
 
-## Current slice: Slice 1 (branch `slice-1`)
-The scope is a manual journey: the admin logs in, uploads a PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public List and Detail pages. It runs locally against Postgres in Docker.
-- Extraction is a **stub** that always returns `failed` (`model_name "stub"`, `failure_reason "extraction not enabled"`).
-- PDFs are stored in the database (`tender_pdfs` table), in every environment. Nothing is written to the server's disk.
+## Deployment rules (see `specs/deployment-spec.md`)
+- **Hosting:** Vercel (frontend), Render free (backend, `bash render-start.sh`), Neon free (database). Pushes to `main` redeploy both.
+- **Migrations run on every Render start**, against the live database. A migration merged to `main` runs on live at the next deploy, so it must work on existing data.
+- **The live database is never seeded.** Never point the tests, the e2e test, `reset_e2e_db.py` or any sample-data command at it; they refuse non-local databases, so keep those guards (`app/dbtarget.py`).
+- **Production addresses and secrets never go in `.env`,** any file, a commit, a log line or the chat. The secret check blocks the common shapes. A deliberate look-alike in a test needs `# secret-check: allow` on that line.
+- **PDFs live in the `tender_pdfs` table.** Its `content` column is deferred and `Tender.pdf` refuses lazy loads, so lists and pages never load file bytes; keep it that way (a test checks).
+- **Rate limits** are in memory: 5 logins and 60 public requests per minute per address. The visitor's address comes from `TRUSTED_PROXY_HOPS` (0 locally).
 
-**Not in this slice:**
+## Current stage: free public deployment (branch `deploy`)
+Slice 1 (manual add, publish, public list and detail) is merged. This stage makes it deployable at zero cost: PDFs in the database, production settings, rate limits, hosting files, live-data guards, the secret check, and docs.
+- Extraction is still a **stub** that always returns `failed` (`model_name "stub"`, `failure_reason "extraction not enabled"`).
+
+**Still not built:**
 - the real Claude call
 - `POST …/extract` and the re-extract button
-- `GET …/pdf-url` and the PDF pane on Review
-- S3
-- rate limiting
-- deployment
+- `GET …/pdf-url`, the signed PDF link and the PDF pane on Review
+- automatic daily backups (manual backup and restore are in the README)
 - performance targets
 
-The task list is in the build plan: one commit per task, each with its check passing before moving on.
+One commit per task, each with its check passing before moving on.
