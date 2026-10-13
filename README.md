@@ -9,7 +9,7 @@ The specs in [`specs/`](specs/) are the source of truth: [goal](specs/goal-spec.
 The first working journey runs locally. An admin logs in, uploads a tender PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public Tender List and Detail pages.
 
 - **Extraction is a stub.** It always reports "failed", so every draft starts empty. The Claude-based extractor replaces it in a later slice, with no API change.
-- **PDFs are stored in a local folder** (`UPLOAD_DIR`), not S3.
+- **PDFs are stored in the database** (a `tender_pdfs` table), not on disk or in S3, so the app can run on free hosting whose disk is wiped on restart.
 - **Not built yet:** the Claude call, re-extract, the PDF viewer on the Review page, S3, rate limiting and deployment.
 
 ## Prerequisites

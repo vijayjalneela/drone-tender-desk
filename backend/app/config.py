@@ -15,15 +15,6 @@ class Settings(BaseSettings):
     # Signs admin tokens. Required; too short a secret is refused at startup.
     jwt_secret: str = Field(min_length=32)
     allowed_origins: str = "http://localhost:5173"
-    # Relative paths are resolved from the repo root, where .env lives.
-    upload_dir: str = "./uploads"
-    # When set, PDFs go to S3 instead of upload_dir (not available until a later slice).
-    s3_bucket_name: str | None = None
-
-    @property
-    def upload_path(self) -> Path:
-        path = Path(self.upload_dir)
-        return path if path.is_absolute() else (REPO_ROOT / path).resolve()
 
     @property
     def cors_origins(self) -> list[str]:

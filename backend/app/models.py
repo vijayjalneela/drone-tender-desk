@@ -12,12 +12,13 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Text,
     func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, deferred, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -94,7 +95,6 @@ class Tender(Base):
 
     # Set by the admin at upload and kept through re-extraction.
     source_url: Mapped[str] = mapped_column(Text)
-    pdf_storage_key: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[TenderStatus] = mapped_column(
         pg_enum(TenderStatus, "tender_status"), server_default=TenderStatus.draft.value
@@ -115,6 +115,27 @@ class Tender(Base):
     extraction_runs: Mapped[list["ExtractionRun"]] = relationship(
         back_populates="tender", order_by="ExtractionRun.id"
     )
+    # Loaded only when asked for, so reading a tender never pulls in the file.
+    pdf: Mapped["TenderPdf | None"] = relationship(back_populates="tender", lazy="raise")
+
+
+class TenderPdf(Base):
+    """The uploaded PDF itself, kept apart from Tender (backend-spec §3, §6).
+
+    Stored in the database because the free hosting disk is wiped on restart.
+    """
+
+    __tablename__ = "tender_pdfs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tender_id: Mapped[int] = mapped_column(ForeignKey("tenders.id"), unique=True)
+    # deferred: the bytes load only when `content` itself is read.
+    content: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    tender: Mapped[Tender] = relationship(back_populates="pdf")
 
 
 class ExtractionRun(Base):

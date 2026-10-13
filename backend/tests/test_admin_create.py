@@ -1,11 +1,12 @@
 """POST /api/admin/tenders: upload a PDF, create a draft, run (stub) extraction."""
 
-from datetime import timedelta, datetime
+import hashlib
+from datetime import datetime, timedelta
 
 import pytest
 
 from app.extraction.service import EXTRACTABLE_FIELDS, ExtractionResult, get_extractor
-from app.models import ExtractionOutcome, ExtractionRun, Tender
+from app.models import ExtractionOutcome, ExtractionRun, Tender, TenderPdf
 
 SOURCE = "https://example.gov.in/tenders/117.pdf"
 PDF = b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF\n"
@@ -17,14 +18,15 @@ def upload(client, headers, content=PDF, source_url=SOURCE, filename="tender.pdf
     return client.post("/api/admin/tenders", headers=headers, files=files, data=data)
 
 
-def stored_files(storage) -> list:
-    return sorted(storage.root.rglob("*.pdf")) if storage.root.exists() else []
+def stored_pdfs(db) -> list[TenderPdf]:
+    db.expire_all()
+    return db.query(TenderPdf).all()
 
 
 # --- happy path --------------------------------------------------------------
 
 
-def test_upload_creates_empty_draft_with_failed_extraction(client, admin_headers, storage):
+def test_upload_creates_empty_draft_with_failed_extraction(client, admin_headers):
     response = upload(client, admin_headers)
 
     assert response.status_code == 201
@@ -39,7 +41,7 @@ def test_upload_creates_empty_draft_with_failed_extraction(client, admin_headers
     assert body["published_at"] is None
 
 
-def test_response_has_exactly_the_tender_admin_shape(client, admin_headers, storage):
+def test_response_has_exactly_the_tender_admin_shape(client, admin_headers):
     body = upload(client, admin_headers).json()
 
     assert set(body) == {
@@ -52,23 +54,24 @@ def test_response_has_exactly_the_tender_admin_shape(client, admin_headers, stor
     }  # fmt: skip
 
 
-def test_timestamps_are_in_india_time(client, admin_headers, storage):
+def test_timestamps_are_in_india_time(client, admin_headers):
     body = upload(client, admin_headers).json()
 
     for name in ("created_at", "updated_at"):
         assert datetime.fromisoformat(body[name]).utcoffset() == timedelta(hours=5, minutes=30)
 
 
-def test_pdf_is_saved_and_linked_to_the_tender(client, admin_headers, storage, db):
+def test_pdf_is_stored_in_the_database_exactly_as_uploaded(client, admin_headers, db):
     tender_id = upload(client, admin_headers).json()["id"]
 
-    tender = db.get(Tender, tender_id)
-    assert tender.pdf_storage_key.startswith("tenders/")
-    assert (storage.root / tender.pdf_storage_key).read_bytes() == PDF
-    assert stored_files(storage) == [storage.root / tender.pdf_storage_key]
+    [pdf] = stored_pdfs(db)
+    assert pdf.tender_id == tender_id
+    assert pdf.content == PDF
+    assert pdf.size_bytes == len(PDF)
+    assert pdf.sha256 == hashlib.sha256(PDF).hexdigest()
 
 
-def test_stub_run_is_recorded(client, admin_headers, storage, db):
+def test_stub_run_is_recorded(client, admin_headers, db):
     tender_id = upload(client, admin_headers).json()["id"]
 
     run = db.query(ExtractionRun).filter_by(tender_id=tender_id).one()
@@ -80,7 +83,7 @@ def test_stub_run_is_recorded(client, admin_headers, storage, db):
     assert run.raw_output is None
 
 
-def test_extraction_outcome_is_logged(client, admin_headers, storage, caplog):
+def test_extraction_outcome_is_logged(client, admin_headers, caplog):
     caplog.set_level("INFO", logger="app")
 
     upload(client, admin_headers)
@@ -91,19 +94,19 @@ def test_extraction_outcome_is_logged(client, admin_headers, storage, caplog):
     assert "input_tokens=None output_tokens=None" in lines[0]
 
 
-def test_pdf_header_may_follow_leading_bytes(client, admin_headers, storage):
+def test_pdf_header_may_follow_leading_bytes(client, admin_headers):
     response = upload(client, admin_headers, content=b"\xef\xbb\xbf\n" + PDF)
 
     assert response.status_code == 201
 
 
-def test_file_of_exactly_20_mb_is_accepted(client, admin_headers, storage):
+def test_file_of_exactly_20_mb_is_accepted(client, admin_headers):
     content = PDF + b"0" * (20 * 1024 * 1024 - len(PDF))
 
     assert upload(client, admin_headers, content=content).status_code == 201
 
 
-def test_url_whitespace_is_trimmed(client, admin_headers, storage):
+def test_url_whitespace_is_trimmed(client, admin_headers):
     body = upload(client, admin_headers, source_url=f"  {SOURCE}  ").json()
 
     assert body["source_url"] == SOURCE
@@ -112,7 +115,7 @@ def test_url_whitespace_is_trimmed(client, admin_headers, storage):
 # --- extraction failures never fail the request -------------------------------
 
 
-def test_extractor_crash_still_creates_the_draft(app, client, admin_headers, storage, db):
+def test_extractor_crash_still_creates_the_draft(app, client, admin_headers, db):
     class Exploding:
         def extract(self, pdf):
             raise RuntimeError("model went away")
@@ -128,7 +131,7 @@ def test_extractor_crash_still_creates_the_draft(app, client, admin_headers, sto
     assert run.failure_reason == "unexpected error"
 
 
-def test_timed_out_run_shows_as_failed_on_the_tender(app, client, admin_headers, storage, db):
+def test_timed_out_run_shows_as_failed_on_the_tender(app, client, admin_headers, db):
     class Slow:
         def extract(self, pdf):
             return ExtractionResult(
@@ -146,7 +149,7 @@ def test_timed_out_run_shows_as_failed_on_the_tender(app, client, admin_headers,
     assert db.query(ExtractionRun).one().outcome == ExtractionOutcome.timed_out
 
 
-def test_found_values_fill_the_draft_and_the_rest_are_not_found(app, client, admin_headers, storage):
+def test_found_values_fill_the_draft_and_the_rest_are_not_found(app, client, admin_headers):
     class Partial:
         def extract(self, pdf):
             return ExtractionResult(
@@ -172,22 +175,22 @@ def test_found_values_fill_the_draft_and_the_rest_are_not_found(app, client, adm
 # --- rejected uploads --------------------------------------------------------
 
 
-def test_renamed_non_pdf_is_rejected(client, admin_headers, storage, db):
+def test_renamed_non_pdf_is_rejected(client, admin_headers, db):
     response = upload(client, admin_headers, content=b"PK\x03\x04 a zip, not a pdf", filename="t.pdf")
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"] == [{"field": "file", "problem": "must be a PDF file"}]
     assert db.query(Tender).count() == 0
-    assert stored_files(storage) == []
+    assert stored_pdfs(db) == []
 
 
-def test_empty_file_is_rejected(client, admin_headers, storage):
+def test_empty_file_is_rejected(client, admin_headers):
     response = upload(client, admin_headers, content=b"")
 
     assert response.status_code == 422
 
 
-def test_file_over_20_mb_is_413(client, admin_headers, storage, db):
+def test_file_over_20_mb_is_413(client, admin_headers, db):
     content = PDF + b"0" * (20 * 1024 * 1024 + 1 - len(PDF))
 
     response = upload(client, admin_headers, content=content)
@@ -195,7 +198,7 @@ def test_file_over_20_mb_is_413(client, admin_headers, storage, db):
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "file_too_large"
     assert db.query(Tender).count() == 0
-    assert stored_files(storage) == []
+    assert stored_pdfs(db) == []
 
 
 @pytest.mark.parametrize(
@@ -212,38 +215,38 @@ def test_file_over_20_mb_is_413(client, admin_headers, storage, db):
         "https://example.gov.in/" + "a" * 2048,
     ],
 )
-def test_invalid_source_url_is_rejected(client, admin_headers, storage, db, bad_url):
+def test_invalid_source_url_is_rejected(client, admin_headers, db, bad_url):
     response = upload(client, admin_headers, source_url=bad_url)
 
     assert response.status_code == 422
     assert [f["field"] for f in response.json()["error"]["fields"]] == ["source_url"]
     assert db.query(Tender).count() == 0
-    assert stored_files(storage) == []
+    assert stored_pdfs(db) == []
 
 
-def test_missing_file_is_rejected(client, admin_headers, storage):
+def test_missing_file_is_rejected(client, admin_headers):
     response = upload(client, admin_headers, content=None)
 
     assert response.status_code == 422
     assert [f["field"] for f in response.json()["error"]["fields"]] == ["file"]
 
 
-def test_missing_source_url_is_rejected(client, admin_headers, storage):
+def test_missing_source_url_is_rejected(client, admin_headers):
     response = upload(client, admin_headers, source_url=None)
 
     assert response.status_code == 422
     assert [f["field"] for f in response.json()["error"]["fields"]] == ["source_url"]
 
 
-def test_not_logged_in_is_401_and_nothing_is_saved(client, storage, db):
+def test_not_logged_in_is_401_and_nothing_is_saved(client, db):
     response = upload(client, headers={})
 
     assert response.status_code == 401
     assert db.query(Tender).count() == 0
-    assert stored_files(storage) == []
+    assert stored_pdfs(db) == []
 
 
-def test_database_failure_removes_the_saved_pdf(app, client, admin_headers, storage, monkeypatch):
+def test_failure_after_the_pdf_is_added_saves_neither_tender_nor_pdf(app, client, admin_headers, db, monkeypatch):
     from app.routers import admin_tenders
 
     def broken_extraction(*args, **kwargs):
@@ -254,4 +257,48 @@ def test_database_failure_removes_the_saved_pdf(app, client, admin_headers, stor
     response = upload(client, admin_headers)
 
     assert response.status_code == 500
-    assert stored_files(storage) == []
+    assert stored_pdfs(db) == []
+    assert db.query(Tender).count() == 0
+
+
+def test_a_20_mb_pdf_is_stored_intact(client, admin_headers, db):
+    content = PDF + b"0" * (20 * 1024 * 1024 - len(PDF))
+
+    upload(client, admin_headers, content=content)
+
+    [pdf] = stored_pdfs(db)
+    assert pdf.size_bytes == 20 * 1024 * 1024
+    assert pdf.sha256 == hashlib.sha256(content).hexdigest()
+
+
+def test_reading_and_editing_tenders_never_loads_pdf_bytes(app, client, admin_headers, db):
+    """Lists and tender pages must not pull megabytes of PDF per row."""
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    tender_id = upload(client, admin_headers).json()["id"]
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, *args):
+        statements.append(statement)
+
+    event.listen(Engine, "before_cursor_execute", record)
+    try:
+        client.get("/api/admin/tenders", headers=admin_headers)
+        client.get(f"/api/admin/tenders/{tender_id}", headers=admin_headers)
+        client.patch(
+            f"/api/admin/tenders/{tender_id}",
+            headers=admin_headers,
+            json={
+                "title": "T", "issuing_body": "BSF", "buyer_type": "central", "document_type": "RFP",
+                "category": "drone", "bid_closing_date": "2099-01-01",
+            },
+        )  # fmt: skip
+        client.post(f"/api/admin/tenders/{tender_id}/publish", headers=admin_headers)
+        client.get("/api/tenders", params={"status": "all"})
+        client.get(f"/api/tenders/{tender_id}")
+    finally:
+        event.remove(Engine, "before_cursor_execute", record)
+
+    assert statements, "the requests should have run queries"
+    assert not [s for s in statements if "tender_pdfs" in s]

@@ -56,7 +56,7 @@ Tooling: Python 3.12 via uv, and Node 20 or later.
 ## Current slice: Slice 1 (branch `slice-1`)
 The scope is a manual journey: the admin logs in, uploads a PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public List and Detail pages. It runs locally against Postgres in Docker.
 - Extraction is a **stub** that always returns `failed` (`model_name "stub"`, `failure_reason "extraction not enabled"`).
-- PDFs are stored in the local `UPLOAD_DIR`.
+- PDFs are stored in the database (`tender_pdfs` table), in every environment. Nothing is written to the server's disk.
 
 **Not in this slice:**
 - the real Claude call
