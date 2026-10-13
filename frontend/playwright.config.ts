@@ -1,6 +1,3 @@
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
 import { defineConfig, devices } from '@playwright/test'
 
 import { API_PORT, E2E_ADMIN, WEB_PORT } from './e2e/constants.ts'
@@ -13,7 +10,6 @@ import { API_PORT, E2E_ADMIN, WEB_PORT } from './e2e/constants.ts'
 const backendEnv = {
   DATABASE_URL: 'postgresql+psycopg://tender:tender@localhost:5432/tender_desk_e2e',
   ALLOWED_ORIGINS: `http://localhost:${WEB_PORT}`,
-  UPLOAD_DIR: join(tmpdir(), 'drone-tender-desk-e2e-uploads'),
   ADMIN_USERNAME: E2E_ADMIN.username,
   ADMIN_PASSWORD: E2E_ADMIN.password,
 }

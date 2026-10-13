@@ -1,9 +1,10 @@
 # API Contract: Drone Tender Desk
 
-> The agreement between the frontend and the backend. Both sides are built against this document without needing to see each other's code. Derived from `frontend-spec.md` and `backend-spec.md`. Draft v0.2, owner: VJ.
+> The agreement between the frontend and the backend. Both sides are built against this document without needing to see each other's code. Derived from `frontend-spec.md` and `backend-spec.md`. Draft v0.3, owner: VJ.
 
 ## 1. General Rules
-- **Base path:** all endpoints start with `/api`. The server address comes from `VITE_API_BASE_URL` in the frontend, which does not include `/api` (for example `http://localhost:8000`).
+- **Base path:** all endpoints start with `/api`. The server address comes from `VITE_API_BASE_URL` in the frontend, which does not include `/api` (for example `http://localhost:8000` locally, or the Render service address in production). It is set per environment and never hardcoded.
+- **Cross-origin requests** are accepted only from the frontend addresses in the backend's `ALLOWED_ORIGINS`.
 - **Format:** requests and responses are JSON, except the PDF upload, which is `multipart/form-data`.
 - **Dates** (calendar days) are strings in `YYYY-MM-DD` form, for example `"2026-11-14"`.
 - **Timestamps** are ISO 8601 strings in India time (`+05:30`), for example `"2026-10-12T22:30:00+05:30"`.
@@ -32,7 +33,7 @@
 | `unauthorized` | 401 | Missing, invalid or expired admin token, or wrong login |
 | `conflict` | 409 | Action not allowed in the tender's current status |
 | `file_too_large` | 413 | Upload over 20 MB |
-| `rate_limited` | 429 | Too many requests |
+| `rate_limited` | 429 | Too many requests: more than 5 login attempts, or more than 60 public requests, per minute from one address |
 | `server_error` | 500 | Anything unexpected. Message is general; details are only in server logs |
 
 ## 2. Data Shapes
@@ -158,8 +159,14 @@ Run extraction again on the stored PDF. Overwrites the draft's extractable field
 - **404**, **401** as usual.
 
 ### `GET /api/admin/tenders/{id}/pdf-url`
-- **200:** `{ "url": "https://...", "expires_at": "..." }`. A private link to view the stored PDF, valid for 15 minutes.
+- **200:** `{ "url": "https://...", "expires_at": "..." }`. A private link to view the stored PDF, valid for 15 minutes. The link points at the backend itself (`/api/admin/tenders/{id}/pdf?sig=…`) and is signed by it, so it opens without the admin token; an expired or altered link returns 401.
 - **404**, **401** as usual.
+
+### `GET /api/admin/tenders/{id}/pdf?sig=…`
+- **200:** the PDF (`application/pdf`), shown in the browser rather than downloaded.
+- **401:** the signature is missing, wrong, or expired.
+- **404:** unknown id.
+- Not built yet: it arrives with the PDF view on the Review screen.
 
 ## 5. Which Screen Uses Which Endpoint
 
@@ -170,7 +177,7 @@ Run extraction again on the stored PDF. Overwrites the draft's extractable field
 | Admin Login | `POST /api/admin/login` |
 | Admin Dashboard | `GET /api/admin/tenders`, `POST .../publish`, `POST .../unpublish` |
 | Add Tender | `POST /api/admin/tenders` |
-| Review Tender | `GET /api/admin/tenders/{id}`, `GET .../pdf-url`, `PATCH /api/admin/tenders/{id}`, `POST .../publish`, `POST .../extract` |
+| Review Tender | `GET /api/admin/tenders/{id}`, `GET .../pdf-url` (then the signed `GET .../pdf`), `PATCH /api/admin/tenders/{id}`, `POST .../publish`, `POST .../extract` |
 
 ## 6. Open Questions
 None at present.

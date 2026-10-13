@@ -7,8 +7,8 @@ Run by Playwright before it starts the e2e backend (frontend/playwright.config.t
     ADMIN_USERNAME=e2e-admin ADMIN_PASSWORD=... \
     uv run python scripts/reset_e2e_db.py
 
-It wipes the database it is pointed at, so it refuses any database whose name
-does not end in "_e2e".
+It wipes the database it is pointed at, so it refuses any database that is not
+on this machine or whose name does not end in "_e2e".
 """
 
 import os
@@ -26,12 +26,15 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app.cli import create_admin  # noqa: E402
 from app.config import settings  # noqa: E402
+from app.dbtarget import NotAllowed, require_local  # noqa: E402
 
 
 def main() -> int:
     url = make_url(settings.database_url)
-    if not (url.database or "").endswith("_e2e"):
-        print(f"Refusing to reset '{url.database}': only *_e2e databases are reset.", file=sys.stderr)
+    try:
+        require_local(settings.database_url, "The e2e reset", name_suffix="_e2e")
+    except NotAllowed as refusal:
+        print(f"Refusing: {refusal}", file=sys.stderr)
         return 1
 
     # CREATE DATABASE can't run inside a transaction, so use the maintenance database.

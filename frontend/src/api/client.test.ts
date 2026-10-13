@@ -124,6 +124,17 @@ describe('apiRequest', () => {
     expect(error).toMatchObject({ status: 502, code: 'server_error' })
   })
 
+  it('treats a successful response that is not JSON as an error, not as empty data', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('<html>Service waking up</html>', { status: 200, headers: { 'Content-Type': 'text/html' } }),
+    )
+
+    const error = await apiRequest('/tenders').catch((e) => e)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 200, code: 'server_error' })
+  })
+
   it('reports an unreachable backend as status 0', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
 

@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Uploaded PDFs (local storage)
+# Uploaded PDFs from before they moved into the database (kept ignored so old local copies are never committed)
 uploads/
 backend/uploads/
 

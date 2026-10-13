@@ -4,6 +4,10 @@
 
 The password is asked for twice at the prompt. For scripted setups (e.g. the
 end-to-end test) it can come from the ADMIN_PASSWORD environment variable instead.
+
+It first prints which database it will write to (host and name only). For a
+database that is not on this machine, such as the live one, it asks you to type
+"yes", and it refuses to run without a terminal to ask in.
 """
 
 import argparse
@@ -13,7 +17,9 @@ import sys
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import SessionLocal
+from app.dbtarget import describe, is_local
 from app.models import Admin
 from app.security import MAX_PASSWORD_BYTES, hash_password
 
@@ -41,6 +47,21 @@ def create_admin(db: Session, username: str, password: str) -> Admin:
     return admin
 
 
+def _confirm_target(database_url: str) -> None:
+    """Says which database is about to change; a non-local one needs a typed "yes".
+
+    Shows only host and database name, never the user or password in the address.
+    """
+    print(f"Database: {describe(database_url)}")
+    if is_local(database_url):
+        return
+    if not sys.stdin.isatty():
+        raise CliError("This is not a local database; run this in a terminal so you can confirm.")
+    answer = input('This is NOT a local database. Type "yes" to create the admin there: ')
+    if answer.strip().lower() != "yes":
+        raise CliError("Cancelled. Nothing was changed.")
+
+
 def _read_password() -> str:
     from_env = os.environ.get("ADMIN_PASSWORD")
     if from_env:
@@ -59,7 +80,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        password = _read_password()
+        try:
+            _confirm_target(settings.database_url)
+            password = _read_password()
+        except (EOFError, KeyboardInterrupt):
+            # Ctrl-D or Ctrl-C at any prompt: stop cleanly, not with a traceback.
+            print(file=sys.stderr)
+            raise CliError("Cancelled. Nothing was changed.") from None
         with SessionLocal() as db:
             admin = create_admin(db, args.username, password)
     except CliError as exc:

@@ -44,6 +44,18 @@ describe('Admin Login', () => {
     expect(screen.queryByText('Your session has expired. Please log in again.')).not.toBeInTheDocument()
   })
 
+  it('asks the admin to wait after too many attempts (429)', async () => {
+    mockApi(() => apiError(429, 'rate_limited', 'Too many requests. Please wait and try again.'))
+    const { user } = renderApp('/admin/login')
+
+    await user.type(screen.getByLabelText('Username'), 'admin')
+    await user.type(screen.getByLabelText('Password'), 'x')
+    await user.click(screen.getByRole('button', { name: 'Log in' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many attempts. Please wait a minute and try again.')
+    expect(screen.getByLabelText('Password')).toHaveValue('')
+  })
+
   it('says so when the server cannot be reached', async () => {
     mockApi(() => 'network-error')
     const { user } = renderApp('/admin/login')

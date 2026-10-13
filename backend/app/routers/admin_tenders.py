@@ -10,7 +10,7 @@ from app.security import require_admin
 from app.services import tenders as service
 from app.services.listing import AdminStatus, ListFilters, OpenStatus, list_tenders
 from app.services.tenders import field_error, validate_source_url
-from app.storage import PdfStorage, get_storage
+from app.storage import attach_pdf
 from app.timeutil import today_ist
 
 router = APIRouter(prefix="/api/admin/tenders", dependencies=[Depends(require_admin)])
@@ -67,22 +67,21 @@ def create_tender(
     file: UploadFile = File(),
     source_url: str = Form(),
     db: Session = Depends(get_db),
-    storage: PdfStorage = Depends(get_storage),
     extractor: Extractor = Depends(get_extractor),
 ) -> TenderAdmin:
     """Upload a PDF, create a draft and run extraction. An AI failure still returns 201."""
     url = validate_source_url(source_url)
     pdf = read_pdf(file)
 
-    key = storage.save(pdf)
+    # One transaction: the tender, its PDF and the extraction run are saved together or not at all.
     try:
-        tender = Tender(source_url=url, pdf_storage_key=key)
+        tender = Tender(source_url=url)
         db.add(tender)
+        attach_pdf(db, tender, pdf)
         run_extraction(db, tender, pdf, extractor)
         db.commit()
     except Exception:
         db.rollback()
-        storage.delete(key)  # don't leave an orphaned PDF behind
         raise
 
     db.refresh(tender)
