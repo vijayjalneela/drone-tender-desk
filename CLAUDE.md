@@ -14,6 +14,7 @@ backend/          FastAPI app (Python 3.12, managed with uv)
   app/            routers/, services/, extraction/, models.py, schemas.py, ...
   alembic/        migrations
   tests/          pytest, against a real Postgres test database
+  scripts/        reset_e2e_db.py (wipes only *_e2e databases)
 frontend/         React + Vite + TypeScript + Tailwind + React Router + React Query
   src/            api/, auth/, components/, lib/, pages/, pages/admin/
   e2e/            Playwright journey test
@@ -25,7 +26,7 @@ Run from the repo root unless noted. Copy `.env.example` to `.env` first.
 
 | What | Command |
 |---|---|
-| Start the database | `docker compose up -d db` |
+| Start the database | `docker compose up -d db --wait` |
 | Backend deps | `cd backend && uv sync` |
 | Migrate | `cd backend && uv run alembic upgrade head` |
 | Create the admin | `cd backend && uv run python -m app.cli create-admin` |
@@ -35,7 +36,9 @@ Run from the repo root unless noted. Copy `.env.example` to `.env` first.
 | Run the frontend | `cd frontend && npm run dev` |
 | Frontend tests | `cd frontend && npm test` |
 | Frontend build | `cd frontend && npm run build` |
-| End-to-end test | `cd frontend && npx playwright test` (the database, backend and frontend must be running) |
+| Frontend lint | `cd frontend && npm run lint` |
+| End-to-end browser (once) | `cd frontend && npx playwright install chromium` |
+| End-to-end test | `cd frontend && npm run test:e2e` (only the database must be running; it starts its own backend on 8001 and frontend on 5174 against the throwaway `tender_desk_e2e` database) |
 
 Tooling: Python 3.12 via uv, and Node 20 or later.
 
