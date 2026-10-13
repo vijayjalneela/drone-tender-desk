@@ -6,7 +6,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
@@ -36,6 +36,22 @@ def migrated_test_db() -> None:
     cfg = alembic_config()
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
+
+
+@pytest.fixture(autouse=True)
+def empty_tables() -> Iterator[None]:
+    """Each test starts and ends with empty tables."""
+    yield
+    with test_engine.begin() as conn:
+        conn.execute(
+            text("TRUNCATE extraction_runs, tenders, admins RESTART IDENTITY CASCADE")
+        )
+
+
+@pytest.fixture
+def db() -> Iterator[Session]:
+    with TestSession() as session:
+        yield session
 
 
 def _test_db() -> Iterator[Session]:

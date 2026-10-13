@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env lives at the repo root, one level above backend/.
@@ -11,6 +12,8 @@ class Settings(BaseSettings):
 
     database_url: str
     test_database_url: str | None = None
+    # Signs admin tokens. Required; too short a secret is refused at startup.
+    jwt_secret: str = Field(min_length=32)
     allowed_origins: str = "http://localhost:5173"
     upload_dir: str = "./uploads"
 
