@@ -1,11 +1,11 @@
 # Frontend Spec: Drone Tender Desk
 
-> Describes the screens, flows and visible behaviour. Derived from `goal-spec.md`. Draft v0.2, owner: VJ.
+> Describes the screens, flows and visible behaviour. Derived from `goal-spec.md`. Draft v0.3, owner: VJ.
 
 ## 1. Tech Stack
 - React with Vite, React Router for pages, React Query for server data.
 - Tailwind CSS for styling.
-- Deployed on Vercel. The backend address comes from the build-time variable `VITE_API_BASE_URL` and is never hardcoded. It is the server's address without the `/api` path (for example `http://localhost:8000`); the frontend adds `/api` itself.
+- Deployed on Vercel (Hobby plan). Every route serves the app, so deep links such as `/tenders/12` or `/admin` work on reload. The backend address comes from the build-time variable `VITE_API_BASE_URL` and is never hardcoded. It is the server's address without the `/api` path (for example `http://localhost:8000`); the frontend adds `/api` itself.
 
 ## 2. Application Structure
 Two areas:
@@ -46,6 +46,7 @@ A common header on every page shows the site name, a link to the tender list and
 ### 4.3 Admin Login (`/admin/login`)
 - Username and password fields, Log in button.
 - Wrong credentials show an inline message: "Incorrect username or password." The password field is cleared, the username is kept.
+- After too many attempts (the backend replies 429) it shows "Too many attempts. Please wait a minute and try again."
 
 ### 4.4 Admin Dashboard (`/admin`)
 - Table of all tenders with title, issuing body, closing date, and state: Draft, Published, or Closed. Closed is shown only for a published tender whose `is_closed` is true; a draft is always shown as Draft.
@@ -67,6 +68,9 @@ A common header on every page shows the site name, a link to the tender list and
 ## 5. States for Every Screen
 
 Each criterion is written as "Given a state, the screen shows a behaviour."
+
+**Every screen that loads data**
+- Given loading has taken more than 5 seconds, the loading indicator adds "Starting up the server. This can take up to a minute." The free backend sleeps when unused and takes about a minute to wake. The message disappears as soon as the data arrives.
 
 **Tender List**
 - Given the list is loading, it shows a loading indicator, not an empty message.

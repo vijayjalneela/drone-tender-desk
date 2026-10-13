@@ -1,6 +1,6 @@
 # Goal Spec: Drone Tender Desk (working name)
 
-> Defines *what* we're building and *why*. The frontend spec, backend spec and API contract derive from this document. Draft v0.2, owner: VJ.
+> Defines *what* we're building and *why*. The frontend spec, backend spec and API contract derive from this document. Draft v0.3, owner: VJ.
 
 ## 1. Problem Statement
 Indian government RFIs and RFPs for drones and counter-drone systems are published in many separate places: the Ministry of Defence website, the GeM portal, the Central Public Procurement Portal, state police websites, PSUs and research institutes. Each one is a long PDF in a different format. A drone or anti-drone OEM today has to check all these sites by hand, then read every document to find the few facts that decide whether to bid: what is being bought, how many, the key technical requirements, who is eligible, and when bids close. Opportunities are missed and reading time is wasted.
@@ -57,7 +57,8 @@ This application gives OEMs one place to find drone and counter-drone tenders fr
 ## 8. Constraints & Assumptions
 - **Timeline:** about 4 weeks, part time. **Team:** 1 person.
 - **Platform:** web only, responsive.
-- **Stack:** React frontend (deployed on Vercel), Python FastAPI backend, PostgreSQL database, backend on AWS. This is the same stack as Musafir.
+- **Stack:** React frontend, Python FastAPI backend, PostgreSQL database. This is the same stack as Musafir.
+- **Hosting:** public, at zero cost, with no paid services and no credit card: frontend on Vercel (Hobby plan), backend on Render (free web service), database on Neon (free plan). This is a non-commercial course project, which the Vercel Hobby plan requires. Moving to AWS like Musafir is possible later. See `deployment-spec.md`.
 - **AI:** Claude API for field extraction. The API key is read on the server only and never sent to the browser.
 - **Data:** about 20 real, publicly published, text-based tender PDFs collected by hand for v1.
 - **Source documents are authoritative.** Every tender keeps its source URL.
