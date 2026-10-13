@@ -12,6 +12,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import settings
 from app.db import get_db
 from app.main import create_app
+from app.models import Admin
+from app.security import create_access_token, hash_password
+from app.storage import LocalStorage, get_storage
 
 if not settings.test_database_url:
     raise RuntimeError("TEST_DATABASE_URL is not set; tests never run against the dev database.")
@@ -52,6 +55,24 @@ def empty_tables() -> Iterator[None]:
 def db() -> Iterator[Session]:
     with TestSession() as session:
         yield session
+
+
+@pytest.fixture
+def storage(app: FastAPI, tmp_path: Path) -> LocalStorage:
+    """Uploads in tests go to a temporary folder, never the real UPLOAD_DIR."""
+    local = LocalStorage(tmp_path / "uploads")
+    app.dependency_overrides[get_storage] = lambda: local
+    return local
+
+
+@pytest.fixture
+def admin_headers(db: Session, storage: LocalStorage) -> dict[str, str]:
+    """An admin exists and these headers carry a valid token for them."""
+    admin = Admin(username="admin", password_hash=hash_password("correct horse battery"))
+    db.add(admin)
+    db.commit()
+    token, _ = create_access_token(admin)
+    return {"Authorization": f"Bearer {token}"}
 
 
 def _test_db() -> Iterator[Session]:
