@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.errors import AppError
 from app.models import BuyerType, Category, DocumentType, Tender, TenderStatus
+from app.ratelimit import rate_limited
 from app.schemas import Page, TenderDetail, TenderSummary
 from app.services.listing import AdminStatus, ListFilters, OpenStatus, list_tenders
 from app.timeutil import get_today
 
-router = APIRouter(prefix="/api/tenders")
+# 60 requests a minute per address across the public tender endpoints (backend-spec §7).
+router = APIRouter(prefix="/api/tenders", dependencies=[rate_limited("public")])
 
 
 @router.get("")

@@ -44,11 +44,13 @@ class AppError(Exception):
         code: str,
         message: str | None = None,
         fields: list[dict[str, str]] | None = None,
+        headers: dict[str, str] | None = None,
     ):
         self.status_code = status_code
         self.code = code
         self.message = message or DEFAULT_MESSAGES.get(code, DEFAULT_MESSAGES["server_error"])
         self.fields = fields
+        self.headers = headers
 
 
 def error_response(
@@ -68,7 +70,9 @@ def _field_name(loc: tuple) -> str:
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return error_response(exc.status_code, exc.code, exc.message, exc.fields)
+    response = error_response(exc.status_code, exc.code, exc.message, exc.fields)
+    response.headers.update(exc.headers or {})
+    return response
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.errors import register_error_handlers
+from app.ratelimit import create_limiters
 from app.routers import admin_auth, admin_tenders, health, public_tenders
 
 
@@ -37,6 +38,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Fresh counts per app instance (in memory; see app/ratelimit.py).
+    app.state.limiters = create_limiters()
     register_error_handlers(app)
     app.include_router(health.router)
     app.include_router(public_tenders.router)

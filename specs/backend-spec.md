@@ -126,7 +126,7 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
 - Uploads are limited to PDF files of at most 20 MB. The file type is checked from the file's content, not only its name.
 - Public list endpoint responds within 500 ms for 1,000 tenders.
 - Public endpoints are limited to 60 requests per minute per IP address; `/api/health` is not limited. Beyond the limit they return 429.
-- Rate limits are counted in the server's memory. That is correct while there is a single server, and the counts reset when it restarts. The client's IP address is taken from the hosting proxy's forwarded header.
+- Rate limits are counted in the server's memory. That is correct while there is a single server, and the counts reset when it restarts. The client's IP address is taken from the hosting proxy's forwarded header (`X-Forwarded-For`), reading only the entry written by the platform's own proxy (see `TRUSTED_PROXY_HOPS`).
 - All traffic over HTTPS in production (provided by the hosting platforms).
 - In production the automatic API documentation pages (`/docs`, `/openapi.json`) are turned off (`ENABLE_API_DOCS=false`).
 - The server refuses to start without `DATABASE_URL` and a `JWT_SECRET` of at least 32 characters, or if `ALLOWED_ORIGINS` contains `*`.
@@ -145,6 +145,7 @@ Keeps a record of every AI extraction, for checking and for the evaluation phase
   - `JWT_SECRET` (secret, at least 32 characters).
   - `ALLOWED_ORIGINS`: the exact frontend address(es) for CORS, comma-separated; `*` is refused.
   - `ENABLE_API_DOCS`: `true` locally (the default), `false` in production.
+  - `TRUSTED_PROXY_HOPS`: how many proxies sit in front of the backend, used to find the visitor's real address for rate limits. `0` locally (use the connection's own address). In production it is the number of proxies in front of the app, counted from the right of `X-Forwarded-For`, so a visitor cannot fake their address by sending that header themselves. The value for Render is measured at deployment (deployment-spec §7).
   - `ANTHROPIC_API_KEY` (secret): not used until the real extractor is built.
 - **File storage:** PDFs are stored in the database in every environment, including local development. There is no file-storage setting.
 - **Local development:** PostgreSQL in Docker.

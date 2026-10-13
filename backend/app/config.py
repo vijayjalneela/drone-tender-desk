@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173"
     # The /docs, /redoc and /openapi.json pages. On locally, off in production.
     enable_api_docs: bool = True
+    # How many proxies sit in front of the app (Render's: measured at deployment).
+    # 0 = use the connection's own address. N = the Nth X-Forwarded-For entry from
+    # the right, i.e. the one written by our outermost trusted proxy; entries to its
+    # left come from the visitor and can be faked.
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
 
     @field_validator("database_url", "test_database_url")
     @classmethod

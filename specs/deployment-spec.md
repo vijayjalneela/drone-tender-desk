@@ -42,6 +42,7 @@ Free-plan behaviour the app must live with:
 | `JWT_SECRET` | **Secret** | Render | A new random value of at least 32 characters, different from any local one |
 | `ALLOWED_ORIGINS` | Config | Render | The exact Vercel address, e.g. `https://drone-tender-desk.vercel.app` |
 | `ENABLE_API_DOCS` | Config | Render | `false` |
+| `TRUSTED_PROXY_HOPS` | Config | Render | Measured at deployment (§7 check 5); start with `1` |
 | `PYTHON_VERSION` | Config | Render | `3.12.15` |
 | `VITE_API_BASE_URL` | Config (public: it is built into the frontend) | Vercel | The Render address, with no `/api` and no trailing slash |
 | Admin password | **Secret** | Nowhere but the owner's password manager | The database keeps only its hash |
@@ -77,7 +78,10 @@ Rules:
 2. `/docs` and `/openapi.json` return 404.
 3. `GET /api/tenders?status=all` returns `total: 0` before the first real tender (no sample data).
 4. `GET /api/admin/tenders` without a token returns 401.
-5. A sixth login attempt within one minute returns 429.
+5. Rate limits see each visitor's real address (this also fixes `TRUSTED_PROXY_HOPS`):
+   - a sixth login attempt within one minute from a laptop returns 429;
+   - straight afterwards, a phone on mobile data can still log in (visitors do not share one count);
+   - from the laptop, sending a made-up `X-Forwarded-For` header still returns 429 (the address cannot be faked).
 6. Requests from the Vercel address are allowed by CORS, and requests from other origins are not.
 7. On a phone, over mobile data:
    - the site loads, including after a cold start;

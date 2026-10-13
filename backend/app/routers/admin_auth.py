@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import AppError
+from app.ratelimit import rate_limited
 from app.security import authenticate, create_access_token
 from app.timeutil import to_ist_iso
 
@@ -21,7 +22,8 @@ class LoginResponse(BaseModel):
     expires_at: str
 
 
-@router.post("/api/admin/login")
+# Every attempt counts, right or wrong: at most 5 a minute per address (backend-spec §5).
+@router.post("/api/admin/login", dependencies=[rate_limited("login")])
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
     admin = authenticate(db, body.username, body.password)
     if admin is None:
