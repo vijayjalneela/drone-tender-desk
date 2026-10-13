@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.errors import register_error_handlers
-from app.routers import admin_auth, admin_tenders, health
+from app.routers import admin_auth, admin_tenders, health, public_tenders
 
 
 def configure_logging() -> None:
@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(public_tenders.router)
     app.include_router(admin_auth.router)
     app.include_router(admin_tenders.router)
     return app
