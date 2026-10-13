@@ -83,5 +83,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
     throw new ApiError(response.status, 'server_error', 'Something went wrong. Please try again later.')
   }
+  // Every successful response is JSON. Anything else (for example a hosting provider's
+  // HTML "waking up" page) is not data, so it must not be shown as an empty result.
+  if (parsed === null) {
+    throw new ApiError(response.status, 'server_error', 'The server sent an unexpected response. Please try again.')
+  }
   return parsed as T
 }
