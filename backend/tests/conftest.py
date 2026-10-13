@@ -11,12 +11,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 from app.db import get_db
+from app.dbtarget import require_local
 from app.main import create_app
 from app.models import Admin, Tender
 from app.security import create_access_token, hash_password
 
 if not settings.test_database_url:
     raise RuntimeError("TEST_DATABASE_URL is not set; tests never run against the dev database.")
+# The suite wipes this database, so it must be a local *_test one, never a hosted or live database.
+require_local(settings.test_database_url, "The test suite", name_suffix="_test")
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
