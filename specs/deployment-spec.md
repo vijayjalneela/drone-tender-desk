@@ -12,8 +12,10 @@
 | Part | Host | Plan | Region |
 |---|---|---|---|
 | Frontend (static React build) | Vercel | Hobby (free) | Global CDN |
-| Backend (FastAPI) | Render | Free web service | Singapore |
-| Database (PostgreSQL 16) | Neon | Free | Singapore (Mumbai if offered) |
+| Backend (FastAPI) | Render | Free web service | Ohio (US East) |
+| Database (PostgreSQL 16) | Neon | Free | AWS US East 2 (Ohio) |
+
+The backend and database are in the same region, so each database query stays local. The Neon project was created in Ohio, and Render's Ohio region matches it. Visitors in India reach the backend across the Pacific, so expect roughly a quarter-second extra per request. The frontend is served from Vercel's global network, so pages still load from nearby.
 
 Free-plan behaviour the app must live with:
 - **The backend sleeps** after 15 minutes without requests, and waking takes about a minute. The frontend shows "Starting up the server. This can take up to a minute." (frontend-spec §5).

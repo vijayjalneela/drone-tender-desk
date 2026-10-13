@@ -95,7 +95,7 @@ Things to know about the free plans:
 2. Create a project:
    - name `drone-tender-desk`;
    - Postgres **16**;
-   - region **Asia Pacific (Singapore)**, or Mumbai if offered;
+   - region **AWS US East 2 (Ohio)**, matching the Render region below;
    - database name `tender_desk`.
 3. Click **Connect**, switch **Connection pooling off**, and copy the connection string (`postgresql://…neon.tech/tender_desk?sslmode=require`).
 4. Save it in your password manager. It is a **secret**.
@@ -109,7 +109,7 @@ Things to know about the free plans:
    | Field | Value |
    |---|---|
    | Name | `drone-tender-desk-api` (your address becomes `https://<name>.onrender.com`) |
-   | Region | Singapore |
+   | Region | Ohio (US East), the same region as the Neon database |
    | Branch | `main` |
    | Root Directory | `backend` |
    | Runtime | Python |
