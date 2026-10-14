@@ -6,6 +6,7 @@ import { fetchAdminTender, publishTender, updateTender } from '../../api/admin'
 import { ApiError } from '../../api/client'
 import type { TenderAdmin } from '../../api/types'
 import { useAuth } from '../../auth/useAuth'
+import { AdminStateBadge } from '../../components/AdminStateBadge'
 import { EmptyState, ErrorState, Loading } from '../../components/States'
 import {
   FIELDS,
@@ -16,7 +17,7 @@ import {
   type FieldDef,
   type FormValues,
 } from '../../lib/tenderFields'
-import { actionErrorMessage, adminState, EXTRACTION_FAILED, PUBLISH_CONFIRM } from '../../lib/adminTender'
+import { actionErrorMessage, EXTRACTION_FAILED, PUBLISH_CONFIRM } from '../../lib/adminTender'
 
 export function ReviewTenderPage() {
   const { tenderId } = useParams()
@@ -130,7 +131,7 @@ function ReviewForm({ initial }: { initial: TenderAdmin }) {
     <form onSubmit={onSave} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-semibold text-navy-900">{isDraft ? 'Review tender' : 'Edit tender'}</h1>
-        <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-medium">{adminState(saved)}</span>
+        <AdminStateBadge tender={saved} />
       </div>
 
       {saved.extraction_status === 'failed' && isDraft && (
