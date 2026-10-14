@@ -5,6 +5,7 @@ import { Link, useLocation, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { fetchTender } from '../api/tenders'
 import type { TenderDetail } from '../api/types'
+import { CategoryIcon } from '../components/CategoryIcon'
 import { StatusBadge } from '../components/StatusBadge'
 import { EmptyState, ErrorState, Loading } from '../components/States'
 import { formatDate } from '../lib/dates'
@@ -25,7 +26,7 @@ export function TenderDetailPage() {
   // "Back to tenders" returns to the list with the filters the visitor came from.
   const listSearch = (location.state as { listSearch?: string } | null)?.listSearch ?? ''
   const backLink = (
-    <Link to={{ pathname: '/', search: listSearch }} className="text-sm text-blue-700 underline">
+    <Link to={{ pathname: '/', search: listSearch }} className="text-sm text-navy-700 underline">
       ← Back to tenders
     </Link>
   )
@@ -43,7 +44,7 @@ export function TenderDetailPage() {
     content = (
       <EmptyState>
         <p className="font-medium">Tender not found</p>
-        <Link to="/" className="mt-2 inline-block text-blue-700 underline">
+        <Link to="/" className="mt-2 inline-block text-navy-700 underline">
           Go to the tender list
         </Link>
       </EmptyState>
@@ -68,7 +69,7 @@ function TenderSummaryView({ tender }: { tender: TenderDetail }) {
   return (
     <article className="space-y-4">
       <header className="space-y-2">
-        <h1 className="text-xl font-semibold">{tender.title ?? 'Untitled tender'}</h1>
+        <h1 className="text-xl font-semibold text-navy-900">{tender.title ?? 'Untitled tender'}</h1>
         <StatusBadge isClosed={tender.is_closed} closingDate={tender.bid_closing_date} />
       </header>
 
@@ -80,7 +81,7 @@ function TenderSummaryView({ tender }: { tender: TenderDetail }) {
         href={tender.source_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+        className="inline-block btn-primary px-4 py-2 text-sm"
       >
         View original document
       </a>
@@ -91,7 +92,17 @@ function TenderSummaryView({ tender }: { tender: TenderDetail }) {
         {tender.buyer_type === 'state' && <Field label="State" value={tender.state_name} />}
         <Field label="Reference number" value={tender.reference_number} />
         <Field label="Document type" value={tender.document_type && DOCUMENT_TYPE_LABELS[tender.document_type]} />
-        <Field label="Category" value={tender.category && CATEGORY_LABELS[tender.category]} />
+        <Field
+          label="Category"
+          value={
+            tender.category && (
+              <span className="inline-flex items-center gap-1.5">
+                <CategoryIcon category={tender.category} className="h-5 w-5 text-navy-700" />
+                {CATEGORY_LABELS[tender.category]}
+              </span>
+            )
+          }
+        />
         <Field label="Item and quantity" value={tender.item_and_quantity} />
         <Field label="Key technical requirements" value={tender.technical_requirements} />
         <Field label="Eligibility" value={tender.eligibility} />
@@ -104,7 +115,7 @@ function TenderSummaryView({ tender }: { tender: TenderDetail }) {
   )
 }
 
-function Field({ label, value }: { label: string; value: string | null }) {
+function Field({ label, value }: { label: string; value: ReactNode | null }) {
   return (
     <div className="grid gap-1 px-4 py-3 sm:grid-cols-3 sm:gap-4">
       <dt className="text-sm font-medium text-slate-600">{label}</dt>

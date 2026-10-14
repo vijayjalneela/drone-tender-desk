@@ -184,3 +184,28 @@ test('a published tender fits a 375 px phone screen without sideways scrolling',
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
   expect(await fits()).toBeLessThanOrEqual(0)
 })
+
+test('the themed pages fit a 375 px phone screen and show the banner and footer', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 })
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  const footer = 'Independent project. Not an official Government of India website.'
+
+  await page.goto('/?status=all')
+  await expect(page.getByText('Every drone and counter-drone tender from central and state buyers, in one place.')).toBeVisible()
+  await expect(page.getByTestId('banner-art')).toBeVisible()
+  await expect(page.getByText(footer)).toBeVisible()
+  expect(await overflow(), 'home').toBeLessThanOrEqual(0)
+
+  for (const path of ['/admin/login', '/no-such-page']) {
+    await page.goto(path)
+    await expect(page.getByText(footer)).toBeVisible()
+    expect(await overflow(), path).toBeLessThanOrEqual(0)
+  }
+
+  // A detail page: the journey test above leaves at least one published tender behind.
+  await page.goto('/?status=all')
+  await page.getByRole('listitem').first().click()
+  await expect(page.getByRole('link', { name: 'View original document' })).toBeVisible()
+  await expect(page.locator('svg[data-icon]').first()).toBeVisible()
+  expect(await overflow(), 'detail').toBeLessThanOrEqual(0)
+})

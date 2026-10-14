@@ -4,6 +4,8 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { fetchTenders, PAGE_SIZE, type TenderListParams } from '../api/tenders'
 import type { Page, TenderSummary } from '../api/types'
+import { CategoryIcon } from '../components/CategoryIcon'
+import { HomeBanner } from '../components/HomeBanner'
 import { StatusBadge } from '../components/StatusBadge'
 import { EmptyState, ErrorState, Loading } from '../components/States'
 import { formatDate, todayInIndia } from '../lib/dates'
@@ -43,7 +45,8 @@ export function TenderListPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Drone and counter-drone tenders</h1>
+      <HomeBanner />
+      <h1 className="text-xl font-semibold text-navy-900">Drone and counter-drone tenders</h1>
       <Filters params={params} onChange={update} />
       <Results
         list={list}
@@ -126,13 +129,18 @@ function TenderRow({ tender, today }: { tender: TenderSummary; today: string }) 
         className="block px-4 py-3 hover:bg-slate-50 focus:bg-slate-50"
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <span className="font-medium text-blue-800">{tender.title ?? 'Untitled tender'}</span>
+          <span className="font-medium text-navy-700">{tender.title ?? 'Untitled tender'}</span>
           <StatusBadge isClosed={tender.is_closed} closingDate={tender.bid_closing_date} today={today} />
         </div>
         <div className="mt-1 text-sm text-slate-700">{tender.issuing_body}</div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-600">
           {tender.document_type && <span>{DOCUMENT_TYPE_LABELS[tender.document_type]}</span>}
-          {tender.category && <span>{CATEGORY_LABELS[tender.category]}</span>}
+          {tender.category && (
+            <span className="inline-flex items-center gap-1">
+              <CategoryIcon category={tender.category} />
+              {CATEGORY_LABELS[tender.category]}
+            </span>
+          )}
           {tender.buyer_type && (
             <span>
               {BUYER_TYPE_LABELS[tender.buyer_type]}
@@ -174,7 +182,7 @@ function Filters({
           placeholder="Search, e.g. jammer or radar"
           className="min-w-0 flex-1 rounded border border-slate-300 px-3 py-1.5"
         />
-        <button type="submit" className="rounded bg-slate-900 px-4 py-1.5 text-sm font-medium text-white">
+        <button type="submit" className="btn-primary px-4 py-1.5 text-sm">
           Search
         </button>
       </form>

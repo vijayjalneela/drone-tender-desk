@@ -1,1 +1,57 @@
 @import 'tailwindcss';
+
+/*
+ * Visual theme tokens (frontend-spec §7.1). Tailwind turns each --color-* into
+ * utilities such as text-navy-900 or bg-open-bg. Keep every value a 6-digit hex:
+ * src/theme/contrast.test.ts reads them from this file to check WCAG contrast.
+ */
+@theme {
+  --color-navy-900: #0b1f4b;
+  --color-navy-800: #162e6e;
+  --color-navy-700: #1d3a8a;
+
+  --color-saffron-100: #ffe6cc;
+  --color-india-green-100: #d6f0d9;
+
+  --color-open-bg: #dcfce7;
+  --color-open-text: #166534;
+  --color-soon-bg: #fef3c7;
+  --color-soon-text: #78350f;
+  --color-closed-bg: #e2e8f0;
+  --color-closed-text: #334155;
+
+  --color-page: #f8fafc;
+  --color-muted: #475569;
+}
+
+/* A soft left-to-right wash of the tricolour colours: an accent, never the flag's stripes. */
+@utility tricolour-band {
+  background-image: linear-gradient(
+    to right,
+    var(--color-saffron-100),
+    #ffffff 50%,
+    var(--color-india-green-100)
+  );
+}
+
+/* Primary action: navy with white text. Publish keeps its own green style. */
+@utility btn-primary {
+  background-color: var(--color-navy-700);
+  color: #ffffff;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  &:hover:not(:disabled) {
+    background-color: var(--color-navy-800);
+  }
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+/* A visible navy outline for keyboard users on every focusable element. */
+@layer base {
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-navy-700);
+    outline-offset: 2px;
+  }
+}
