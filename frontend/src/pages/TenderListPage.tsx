@@ -4,6 +4,7 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { fetchTenders, PAGE_SIZE, type TenderListParams } from '../api/tenders'
 import type { Page, TenderSummary } from '../api/types'
+import { CategoryIcon } from '../components/CategoryIcon'
 import { HomeBanner } from '../components/HomeBanner'
 import { StatusBadge } from '../components/StatusBadge'
 import { EmptyState, ErrorState, Loading } from '../components/States'
@@ -134,7 +135,12 @@ function TenderRow({ tender, today }: { tender: TenderSummary; today: string }) 
         <div className="mt-1 text-sm text-slate-700">{tender.issuing_body}</div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-600">
           {tender.document_type && <span>{DOCUMENT_TYPE_LABELS[tender.document_type]}</span>}
-          {tender.category && <span>{CATEGORY_LABELS[tender.category]}</span>}
+          {tender.category && (
+            <span className="inline-flex items-center gap-1">
+              <CategoryIcon category={tender.category} />
+              {CATEGORY_LABELS[tender.category]}
+            </span>
+          )}
           {tender.buyer_type && (
             <span>
               {BUYER_TYPE_LABELS[tender.buyer_type]}
