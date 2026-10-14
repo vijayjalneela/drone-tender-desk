@@ -5,10 +5,7 @@ reset when it restarts. Each app instance gets its own limiters (see create_app)
 so tests never share counts.
 """
 
-import hashlib
-import logging
 import math
-import secrets
 import threading
 import time
 from collections import deque
@@ -18,8 +15,6 @@ from fastapi import Depends, Request
 
 from app.config import settings
 from app.errors import AppError
-
-logger = logging.getLogger(__name__)
 
 LOGIN_PER_MINUTE = 5
 PUBLIC_PER_MINUTE = 60
@@ -70,37 +65,6 @@ def client_ip(request: Request, hops: int | None = None) -> str:
     return forwarded[-hops]
 
 
-# --- TEMPORARY diagnostics (LOG_CLIENT_IP_DIAGNOSTICS) -------------------------------
-# Used once to find where the host puts the visitor's real address. Each address is
-# shown only as a short fingerprint salted with a random value that lives in this
-# process's memory and is never logged, so the log cannot be turned back into
-# addresses. Nothing from the request body (username, password) or the
-# Authorization header (tokens) is ever read here.
-
-_DIAGNOSTIC_SALT = secrets.token_bytes(16)
-_ADDRESS_HEADERS = ("cf-connecting-ip", "true-client-ip", "x-real-ip")
-
-
-def fingerprint(address: str) -> str:
-    return hashlib.sha256(_DIAGNOSTIC_SALT + address.encode()).hexdigest()[:6]
-
-
-def describe_client_address(request: Request) -> str:
-    """One log line: where an address could come from, as fingerprints only."""
-    socket_ip = request.client.host if request.client else "unknown"
-    forwarded = [part.strip() for part in request.headers.get("x-forwarded-for", "").split(",") if part.strip()]
-    chain = ", ".join(fingerprint(part) for part in forwarded) or "-"
-    others = " ".join(
-        f"{name}={fingerprint(request.headers[name]) if name in request.headers else '-'}" for name in _ADDRESS_HEADERS
-    )
-    hops = settings.trusted_proxy_hops
-    return (
-        f"client-ip diagnostics: socket={fingerprint(socket_ip)} "
-        f"x-forwarded-for[{len(forwarded)}]=[{chain}] (rightmost last) {others} "
-        f"used(hops={hops})={fingerprint(client_ip(request))}"
-    )
-
-
 def create_limiters() -> dict[str, SlidingWindowLimiter]:
     return {
         "login": SlidingWindowLimiter(LOGIN_PER_MINUTE),
@@ -112,8 +76,6 @@ def rate_limited(name: str):
     """A dependency that counts this request against the named limiter, or refuses it with 429."""
 
     def check(request: Request) -> None:
-        if name == "login" and settings.log_client_ip_diagnostics:
-            logger.info(describe_client_address(request))
         limiter: SlidingWindowLimiter = request.app.state.limiters[name]
         wait = limiter.hit(client_ip(request))
         if wait > 0:
