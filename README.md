@@ -6,7 +6,7 @@ The specs in [`specs/`](specs/) are the source of truth: [goal](specs/goal-spec.
 
 ## Status
 
-**Live:** https://drone-tender-desk.vercel.app (the API is at https://drone-tender-desk.onrender.com), deployed on 2026-10-13 on free plans in Ohio. The live record and the go-live checks still open are in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
+**Live:** https://drone-tender-desk.vercel.app (the API is at https://drone-tender-desk.onrender.com), deployed on 2026-10-13 on free plans in Ohio. All go-live checks passed on 2026-10-14; the live record is in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
 
 The first working journey runs locally and on the live site (see [Deploying](#deploying-free-no-card)). An admin logs in, uploads a tender PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public Tender List and Detail pages.
 
@@ -96,7 +96,7 @@ Things to know about the free plans:
 1. Sign up at neon.com **with GitHub**.
 2. Create a project:
    - name `drone-tender-desk`;
-   - Postgres **16**;
+   - Postgres **18**, Neon's current default (this project's live database reports 18.6);
    - region **AWS US East 2 (Ohio)**, matching the Render region below;
    - database name `tender_desk`.
 3. Click **Connect**, switch **Connection pooling off**, and copy the connection string (`postgresql://…neon.tech/tender_desk?sslmode=require`).
@@ -168,40 +168,64 @@ The live database starts empty. Never run the tests, the end-to-end test or any 
 
 ## Backups
 
-Neon's free plan has no scheduled backups, so back up by hand: at go-live, then whenever you have added tenders you would hate to lose. This needs only Docker; `pg_dump` 16 runs in a container.
+Neon's free plan has no scheduled backups, so back up by hand: at go-live, then whenever you have added tenders you would hate to lose. This needs only Docker.
+- The live database is **PostgreSQL 18**, so every command uses the `postgres:18` image. `pg_dump` must be at least as new as the server.
+- Run the steps in **one Terminal window**, so the address you paste in step 1 is still there for steps 2 and 4.
+- Never paste the address anywhere else.
 
-**1. Back up** into a folder outside the repository:
+**1. Get ready.** The address is read at a hidden prompt:
 
 ```sh
+cd ~/projects/drone-tender-desk
 mkdir -p ~/drone-tender-desk-backups
 read -s "LIVE_DATABASE_URL?Paste the Neon DATABASE_URL, then press Enter: "; echo
-PGURL="$LIVE_DATABASE_URL" docker run --rm -e PGURL -v ~/drone-tender-desk-backups:/backup postgres:16 \
+```
+
+**2. Back up** into the folder outside the repository. `-e PGURL` passes the address by name, so it never appears on a command line.
+
+```sh
+PGURL="$LIVE_DATABASE_URL" docker run --rm -e PGURL -v ~/drone-tender-desk-backups:/backup postgres:18 \
   sh -c 'pg_dump --format=custom --no-owner --no-acl --file=/backup/tender_desk-$(date +%Y%m%d-%H%M).dump "$PGURL"'
+ls -l ~/drone-tender-desk-backups
 ```
 
-`-e PGURL` passes the address by name, so it never appears on a command line.
+The `.dump` file is your backup. Keep it private; it contains the admin's password hash.
 
-**2. Prove a restore**, into a separate local scratch database. Never restore into the live one.
+**3. Prove a restore** into a **throwaway** `postgres:18` container. It has no published port and is deleted when stopped; this is never the live database or your development database.
 
 ```sh
-docker compose exec -T db psql -U tender -d tender_desk -c "DROP DATABASE IF EXISTS tender_desk_restore" -c "CREATE DATABASE tender_desk_restore"
-docker compose exec -T db pg_restore -U tender -d tender_desk_restore --no-owner --no-acl < ~/drone-tender-desk-backups/<file>.dump
+docker run -d --rm --name tender-desk-restore -e POSTGRES_HOST_AUTH_METHOD=trust postgres:18
+until docker logs tender-desk-restore 2>&1 | grep -q "PostgreSQL init process complete"; do sleep 1; done
+until docker exec tender-desk-restore pg_isready -U postgres -q; do sleep 1; done
+DUMP=$(ls -t ~/drone-tender-desk-backups/*.dump | head -1)
+docker exec -i tender-desk-restore pg_restore -U postgres -d postgres --no-owner --no-acl < "$DUMP" && echo "Restore finished"
 ```
 
-**3. Check a known tender matches.** This compares every tender's id, title, closing date and status, and each PDF's size and SHA-256, live against restored. `pdf_intact` recomputes each PDF's fingerprint from the stored bytes.
+**4. Check the known tender and its PDF match.** This compares every tender's id, title, closing date and status, plus each PDF's size and SHA-256, between live and restored. `pdf_intact` recomputes the fingerprint from the stored bytes.
+
+The last line only says the restore matches if **all three** hold:
+- the live output is not empty;
+- every PDF is intact (every row ends in `|t`);
+- live and restored are identical.
+
+Otherwise it says `CHECK FAILED`. Two empty outputs are identical too, so `diff` alone could falsely pass.
 
 ```sh
-Q="select t.id, t.title, t.bid_closing_date, t.status, p.size_bytes, p.sha256, encode(sha256(p.content), 'hex') = p.sha256 as pdf_intact from tenders t left join tender_pdfs p on p.tender_id = t.id order by t.id"
-PGURL="$LIVE_DATABASE_URL" Q="$Q" docker run --rm -e PGURL -e Q postgres:16 sh -c 'psql "$PGURL" -At -c "$Q"' > /tmp/live.txt
-docker compose exec -T db psql -U tender -d tender_desk_restore -At -c "$Q" > /tmp/restored.txt
-diff /tmp/live.txt /tmp/restored.txt && echo "Restore matches the live database"
-unset LIVE_DATABASE_URL
+export Q="select t.id, t.title, t.bid_closing_date, t.status, p.size_bytes, p.sha256, encode(sha256(p.content), 'hex') = p.sha256 as pdf_intact from tenders t left join tender_pdfs p on p.tender_id = t.id order by t.id"
+PGURL="$LIVE_DATABASE_URL" docker run --rm -e PGURL -e Q postgres:18 sh -c 'psql "$PGURL" -At -c "$Q"' > /tmp/live.txt
+docker exec tender-desk-restore psql -U postgres -d postgres -At -c "$Q" > /tmp/restored.txt
+cat /tmp/restored.txt
+if [ -s /tmp/live.txt ] && ! grep -qv '|t$' /tmp/live.txt && diff /tmp/live.txt /tmp/restored.txt; then echo "Restore matches the live database"; else echo "CHECK FAILED: empty output, a damaged PDF, or a difference (see above)"; fi
 ```
 
-Each row should end in `|t`. When you're done, remove the scratch copy:
+You should see one row per tender ending in `|t`, then `Restore matches the live database`.
+
+**5. Clean up.** This deletes the throwaway container and forgets the address; it keeps your `.dump` file:
 
 ```sh
-docker compose exec -T db psql -U tender -d tender_desk -c "DROP DATABASE tender_desk_restore"
+docker stop tender-desk-restore
+unset LIVE_DATABASE_URL Q
+rm -f /tmp/live.txt /tmp/restored.txt
 ```
 
 ## Layout
