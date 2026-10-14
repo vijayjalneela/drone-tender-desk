@@ -46,7 +46,6 @@ Free-plan behaviour the app must live with:
 | `ALLOWED_ORIGINS` | Config | Render | The exact Vercel address, e.g. `https://drone-tender-desk.vercel.app` |
 | `ENABLE_API_DOCS` | Config | Render | `false` |
 | `TRUSTED_PROXY_HOPS` | Config | Render | Measured at deployment (§7 check 5); start with `1` |
-| `LOG_CLIENT_IP_DIAGNOSTICS` | Config, **temporary** | Render | `false`. Set to `true` only while measuring `TRUSTED_PROXY_HOPS`, then back to `false`. When on, each login attempt logs where the visitor's address arrives, as anonymised fingerprints only: never an address, username, password or token. |
 | `VITE_API_BASE_URL` | Config (public: it is built into the frontend) | Vercel | The Render address, with no `/api` and no trailing slash |
 | Admin password | **Secret** | Nowhere but the owner's password manager | The database keeps only its hash |
 
