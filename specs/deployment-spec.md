@@ -13,7 +13,9 @@
 |---|---|---|---|
 | Frontend (static React build) | Vercel | Hobby (free) | Global CDN |
 | Backend (FastAPI) | Render | Free web service | Ohio (US East) |
-| Database (PostgreSQL 16) | Neon | Free | AWS US East 2 (Ohio) |
+| Database (PostgreSQL 18; Neon reports 18.6) | Neon | Free | AWS US East 2 (Ohio) |
+
+Local development and tests still use PostgreSQL 16 in Docker (`docker-compose.yml`), while production is 18. The app uses only standard SQL, and every test passes on 16. Moving local to 18 would remove the difference.
 
 The backend and database are in the same region, so each database query stays local. The Neon project was created in Ohio, and Render's Ohio region matches it. Visitors in India reach the backend across the Pacific, so expect roughly a quarter-second extra per request. The frontend is served from Vercel's global network, so pages still load from nearby.
 
@@ -70,8 +72,8 @@ Rules:
 ## 6. Backups (known gap, with a manual check)
 - **Daily automatic backups are not available** on the free plans, so backend-spec §9's daily-backup requirement is a known gap.
 - **Manual backup instead,** documented in the README and run at least once at go-live:
-  1. The owner runs `pg_dump` (Postgres 16, run through Docker so nothing needs installing) against the live database, giving the address at a hidden prompt. The dump is saved outside the repository.
-  2. The dump is restored into a separate local scratch database, never into the live one.
+  1. The owner runs `pg_dump` from the `postgres:18` Docker image, which needs nothing installed and must be at least as new as the server (18.6), against the live database. The address is given at a hidden prompt and passed to Docker by name, so it never appears in a file, a command line or a chat. The dump is saved outside the repository, and it is private: it holds the admin's password hash.
+  2. The dump is restored into a **throwaway `postgres:18` container**: no published port, reachable only through `docker exec`, and deleted when stopped. Never into the live database and never into the local development database.
   3. A known live tender is checked in the restored copy: same id, title, closing date and status, and its PDF has the same size and SHA-256 as the live one.
 - The restore check is one of the go-live acceptance checks (§7).
 
@@ -124,8 +126,8 @@ Reported by the owner: the admin account was created with `create-admin`, and on
 | 6 | CORS | **Passed** 2026-10-14: the Vercel address is allowed, another origin is not | Request from outside |
 | — | Deep links on Vercel | **Passed** 2026-10-14: `/`, `/admin`, `/admin/login`, `/tenders/1` and an unknown path all serve the app, and the frontend calls the Render address | Request from outside |
 | 7 | Phone journey on mobile data | **Pending** | Owner: phone |
-| 8 | Live database counts (1 admin, tenders and their PDFs) | **Pending** | Owner: Neon SQL Editor |
-| 9 | Manual backup and restore | **Pending.** The Neon Postgres version must be known first: `pg_dump` must be at least as new as the server. | Owner: own terminal |
+| 8 | Live database counts (1 admin, tenders and their PDFs) | **Passed** 2026-10-14: admins 1, tenders 1, tender_pdfs 1, extraction_runs 1 (the stub run for the one real tender); no sample data | Owner: Neon SQL Editor |
+| 9 | Manual backup and restore | **Pending.** The server is PostgreSQL 18.6, so the backup uses `pg_dump` 18 and restores into a throwaway `postgres:18` container (§6). The commands were rehearsed locally on 2026-10-14. | Owner: own terminal |
 
 **Note on check 5: how `TRUSTED_PROXY_HOPS` was found**
 - **With `1` and then `2`,** six wrong logins from one laptop all returned 401. The live login was **not rate-limited**, because the address the app read changed on almost every request.
