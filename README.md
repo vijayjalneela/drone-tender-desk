@@ -6,7 +6,9 @@ The specs in [`specs/`](specs/) are the source of truth: [goal](specs/goal-spec.
 
 ## Status
 
-The first working journey runs locally and is ready to deploy for free (see [Deploying](#deploying-free-no-card)). An admin logs in, uploads a tender PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public Tender List and Detail pages.
+**Live:** https://drone-tender-desk.vercel.app (the API is at https://drone-tender-desk.onrender.com), deployed on 2026-10-13 on free plans in Ohio. The live record and the go-live checks still open are in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
+
+The first working journey runs locally and on the live site (see [Deploying](#deploying-free-no-card)). An admin logs in, uploads a tender PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public Tender List and Detail pages.
 
 - **Extraction is a stub.** It always reports "failed", so every draft starts empty. The Claude-based extractor replaces it in a later slice, with no API change.
 - **PDFs are stored in the database** (a `tender_pdfs` table), not on disk or in S3, so the app can run on free hosting whose disk is wiped on restart.
@@ -125,7 +127,7 @@ Things to know about the free plans:
    | `JWT_SECRET` | the new secret from step 2 | secret |
    | `ALLOWED_ORIGINS` | `https://placeholder.invalid` for now (set in step 4 below) | config |
    | `ENABLE_API_DOCS` | `false` | config |
-   | `TRUSTED_PROXY_HOPS` | `1` for now (confirmed by the go-live check) | config |
+   | `TRUSTED_PROXY_HOPS` | `3`: Cloudflare, Render's edge and Render's proxy sit in front of the app (measured; see `deployment-spec.md` §9) | config |
 
    The Python version comes from the repository's `.python-version` (3.12), so no `PYTHON_VERSION` is needed.
 5. Under **Advanced**, set **Health Check Path** to `/api/health`. Click **Create Web Service**.
