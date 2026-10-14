@@ -4,6 +4,7 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { fetchTenders, PAGE_SIZE, type TenderListParams } from '../api/tenders'
 import type { Page, TenderSummary } from '../api/types'
+import { HomeBanner } from '../components/HomeBanner'
 import { StatusBadge } from '../components/StatusBadge'
 import { EmptyState, ErrorState, Loading } from '../components/States'
 import { formatDate, todayInIndia } from '../lib/dates'
@@ -43,6 +44,7 @@ export function TenderListPage() {
 
   return (
     <div className="space-y-4">
+      <HomeBanner />
       <h1 className="text-xl font-semibold text-navy-900">Drone and counter-drone tenders</h1>
       <Filters params={params} onChange={update} />
       <Results
