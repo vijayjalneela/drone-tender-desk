@@ -203,21 +203,28 @@ docker exec -i tender-desk-restore pg_restore -U postgres -d postgres --no-owner
 
 **4. Check the known tender and its PDF match.** This compares every tender's id, title, closing date and status, plus each PDF's size and SHA-256, between live and restored. `pdf_intact` recomputes the fingerprint from the stored bytes.
 
+The last line only says the restore matches if **all three** hold:
+- the live output is not empty;
+- every PDF is intact (every row ends in `|t`);
+- live and restored are identical.
+
+Otherwise it says `CHECK FAILED`. Two empty outputs are identical too, so `diff` alone could falsely pass.
+
 ```sh
-Q="select t.id, t.title, t.bid_closing_date, t.status, p.size_bytes, p.sha256, encode(sha256(p.content), 'hex') = p.sha256 as pdf_intact from tenders t left join tender_pdfs p on p.tender_id = t.id order by t.id"
-PGURL="$LIVE_DATABASE_URL" Q="$Q" docker run --rm -e PGURL -e Q postgres:18 sh -c 'psql "$PGURL" -At -c "$Q"' > /tmp/live.txt
+export Q="select t.id, t.title, t.bid_closing_date, t.status, p.size_bytes, p.sha256, encode(sha256(p.content), 'hex') = p.sha256 as pdf_intact from tenders t left join tender_pdfs p on p.tender_id = t.id order by t.id"
+PGURL="$LIVE_DATABASE_URL" docker run --rm -e PGURL -e Q postgres:18 sh -c 'psql "$PGURL" -At -c "$Q"' > /tmp/live.txt
 docker exec tender-desk-restore psql -U postgres -d postgres -At -c "$Q" > /tmp/restored.txt
 cat /tmp/restored.txt
-diff /tmp/live.txt /tmp/restored.txt && echo "Restore matches the live database"
+if [ -s /tmp/live.txt ] && ! grep -qv '|t$' /tmp/live.txt && diff /tmp/live.txt /tmp/restored.txt; then echo "Restore matches the live database"; else echo "CHECK FAILED: empty output, a damaged PDF, or a difference (see above)"; fi
 ```
 
-Each row should end in `|t`, and the last line should say `Restore matches the live database`.
+You should see one row per tender ending in `|t`, then `Restore matches the live database`.
 
 **5. Clean up.** This deletes the throwaway container and forgets the address; it keeps your `.dump` file:
 
 ```sh
 docker stop tender-desk-restore
-unset LIVE_DATABASE_URL
+unset LIVE_DATABASE_URL Q
 rm -f /tmp/live.txt /tmp/restored.txt
 ```
 

@@ -74,7 +74,7 @@ Rules:
 - **Manual backup instead,** documented in the README and run at least once at go-live:
   1. The owner runs `pg_dump` from the `postgres:18` Docker image, which needs nothing installed and must be at least as new as the server (18.6), against the live database. The address is given at a hidden prompt and passed to Docker by name, so it never appears in a file, a command line or a chat. The dump is saved outside the repository, and it is private: it holds the admin's password hash.
   2. The dump is restored into a **throwaway `postgres:18` container**: no published port, reachable only through `docker exec`, and deleted when stopped. Never into the live database and never into the local development database.
-  3. A known live tender is checked in the restored copy: same id, title, closing date and status, and its PDF has the same size and SHA-256 as the live one.
+  3. A known live tender is checked in the restored copy: same id, title, closing date and status, and its PDF has the same size and SHA-256 as the live one. The check only passes if the live output is **not empty**, every PDF is intact, **and** live and restored are identical. Two empty outputs also compare equal, so a bare `diff` can pass falsely.
 - The restore check is one of the go-live acceptance checks (§7).
 
 ## 7. Go-Live Acceptance Checks
@@ -125,9 +125,9 @@ Reported by the owner: the admin account was created with `create-admin`, and on
 | 5 | Rate limits see real addresses; `TRUSTED_PROXY_HOPS` | **Passed** 2026-10-14 with `TRUSTED_PROXY_HOPS = 3`: six wrong logins from a laptop gave 401 ×5 then 429; a phone on mobile data logged in normally (whether that was still inside the laptop's one-minute block was not recorded; the diagnostics already showed each visitor keyed by their own address); a faked `X-Forwarded-For` from the laptop still got 429. See the note below. | Owner: laptop, phone, faked header |
 | 6 | CORS | **Passed** 2026-10-14: the Vercel address is allowed, another origin is not | Request from outside |
 | — | Deep links on Vercel | **Passed** 2026-10-14: `/`, `/admin`, `/admin/login`, `/tenders/1` and an unknown path all serve the app, and the frontend calls the Render address | Request from outside |
-| 7 | Phone journey on mobile data | **Pending** | Owner: phone |
+| 7 | Phone journey on mobile data | **Pending: not yet reported.** Partly covered elsewhere: the admin logged in from a phone on mobile data during check 5, and the theme's 375 px layout is checked by an automated browser test. The full journey on a phone still needs confirming. | Owner: phone |
 | 8 | Live database counts (1 admin, tenders and their PDFs) | **Passed** 2026-10-14: admins 1, tenders 1, tender_pdfs 1, extraction_runs 1 (the stub run for the one real tender); no sample data | Owner: Neon SQL Editor |
-| 9 | Manual backup and restore | **Pending.** The server is PostgreSQL 18.6, so the backup uses `pg_dump` 18 and restores into a throwaway `postgres:18` container (§6). The commands were rehearsed locally on 2026-10-14. | Owner: own terminal |
+| 9 | Manual backup and restore | **Passed** 2026-10-14. Backup `tender_desk-20261014-1354.dump` (1.6 MB) made with `pg_dump` from `postgres:18`, restored into a throwaway `postgres:18` container. The known tender matched: `1 \| IDDS \| 2023-02-22 \| published \| 1764470 bytes \| sha256 a432e304… \| PDF intact`, and "Restore matches the live database". The container was stopped (removed), the temporary files deleted and the address unset. See the note below. | Owner: own terminal |
 
 **Note on check 5: how `TRUSTED_PROXY_HOPS` was found**
 - **With `1` and then `2`,** six wrong logins from one laptop all returned 401. The live login was **not rate-limited**, because the address the app read changed on almost every request.
@@ -138,3 +138,9 @@ Reported by the owner: the admin account was created with `create-admin`, and on
   - the other two (a Cloudflare server and a Render proxy) change between requests.
 - **So the visitor's address is third from the right:** `TRUSTED_PROXY_HOPS = 3`. A faked header only adds entries to the left, so it cannot move that position (confirmed by step c).
 - **Afterwards:** the diagnostic setting was removed from Render on 2026-10-14. A first attempt set it to a mistyped value, which the startup settings check refused, failing that deploy. The diagnostic code was removed in PR #6.
+
+**Note on check 9: a false pass, then the fix**
+- **The false pass:** the first comparison run printed "Restore matches the live database" while comparing nothing. The query variable `Q` had not reached the commands, so both outputs were empty, and two empty files are identical to `diff`.
+- **The re-run:** with `export Q`, it compared the real rows and passed.
+- **The fix:** the procedure (README step 4) now uses `export Q`, and only reports a match if the live output is not empty, every PDF is intact, and live and restored are identical. Otherwise it prints `CHECK FAILED`.
+- **Rehearsal:** the new check was run locally against a stand-in. It passed on a good restore, and failed on empty output, on a differing restore and on a damaged PDF.
