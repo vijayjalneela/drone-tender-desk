@@ -127,7 +127,7 @@ Things to know about the free plans:
    | `JWT_SECRET` | the new secret from step 2 | secret |
    | `ALLOWED_ORIGINS` | `https://placeholder.invalid` for now (set in step 4 below) | config |
    | `ENABLE_API_DOCS` | `false` | config |
-   | `TRUSTED_PROXY_HOPS` | `1` for now (confirmed by the go-live check) | config |
+   | `TRUSTED_PROXY_HOPS` | `3`: Cloudflare, Render's edge and Render's proxy sit in front of the app (measured; see `deployment-spec.md` §9) | config |
 
    The Python version comes from the repository's `.python-version` (3.12), so no `PYTHON_VERSION` is needed.
 5. Under **Advanced**, set **Health Check Path** to `/api/health`. Click **Create Web Service**.

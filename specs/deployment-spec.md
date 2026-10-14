@@ -45,7 +45,7 @@ Free-plan behaviour the app must live with:
 | `JWT_SECRET` | **Secret** | Render | A new random value of at least 32 characters, different from any local one |
 | `ALLOWED_ORIGINS` | Config | Render | The exact Vercel address, e.g. `https://drone-tender-desk.vercel.app` |
 | `ENABLE_API_DOCS` | Config | Render | `false` |
-| `TRUSTED_PROXY_HOPS` | Config | Render | Measured at deployment (§7 check 5); start with `1` |
+| `TRUSTED_PROXY_HOPS` | Config | Render | `3`, measured on 2026-10-14 (§9 check 5): requests pass Cloudflare, then Render's edge, then Render's internal proxy |
 | `LOG_CLIENT_IP_DIAGNOSTICS` | Config, **temporary** | Render | `false`. Set to `true` only while measuring `TRUSTED_PROXY_HOPS`, then back to `false`. When on, each login attempt logs where the visitor's address arrives, as anonymised fingerprints only: never an address, username, password or token. |
 | `VITE_API_BASE_URL` | Config (public: it is built into the frontend) | Vercel | The Render address, with no `/api` and no trailing slash |
 | Admin password | **Secret** | Nowhere but the owner's password manager | The database keeps only its hash |
@@ -121,9 +121,19 @@ Reported by the owner: the admin account was created with `create-admin`, and on
 | 2 | `/docs`, `/redoc`, `/openapi.json` | **Passed** 2026-10-14: all 404 | Request from outside |
 | 3 | No sample data | **Passed** 2026-10-14: the public list holds exactly 1 tender, the real one ("IDDS", a counter-drone RFP closed 22 Feb 2023, issuing body entered as "Central Govt"), and its source link opens a PDF on mod.gov.in, the Ministry of Defence site. The empty-before-first-tender state was not observed, because the tender was added before checking. | Request from outside |
 | 4 | Admin API without a token | **Passed** 2026-10-14: 401 | Request from outside |
-| 5 | Rate limits see real addresses; `TRUSTED_PROXY_HOPS` | **Pending.** Note: responses come through Cloudflare (`server: cloudflare`) in front of Render, so there may be more than one proxy. This check settles the value. | Owner: laptop, phone, faked header |
+| 5 | Rate limits see real addresses; `TRUSTED_PROXY_HOPS` | **Passed** 2026-10-14 with `TRUSTED_PROXY_HOPS = 3`: six wrong logins from a laptop gave 401 ×5 then 429; a phone on mobile data logged in normally (whether that was still inside the laptop's one-minute block was not recorded; the diagnostics already showed each visitor keyed by their own address); a faked `X-Forwarded-For` from the laptop still got 429. See the note below. | Owner: laptop, phone, faked header |
 | 6 | CORS | **Passed** 2026-10-14: the Vercel address is allowed, another origin is not | Request from outside |
 | — | Deep links on Vercel | **Passed** 2026-10-14: `/`, `/admin`, `/admin/login`, `/tenders/1` and an unknown path all serve the app, and the frontend calls the Render address | Request from outside |
 | 7 | Phone journey on mobile data | **Pending** | Owner: phone |
 | 8 | Live database counts (1 admin, tenders and their PDFs) | **Pending** | Owner: Neon SQL Editor |
 | 9 | Manual backup and restore | **Pending.** The Neon Postgres version must be known first: `pg_dump` must be at least as new as the server. | Owner: own terminal |
+
+**Note on check 5: how `TRUSTED_PROXY_HOPS` was found**
+- **With `1` and then `2`,** six wrong logins from one laptop all returned 401. The live login was **not rate-limited**, because the address the app read changed on almost every request.
+- **Measuring it:** a temporary, off-by-default diagnostic (`LOG_CLIENT_IP_DIAGNOSTICS`, PR #4) logged where the visitor's address arrives. It used only anonymised fingerprints, never an address, username, password or token.
+- **The six logged attempts showed:**
+  - `X-Forwarded-For` has **three** entries;
+  - the **leftmost** is the same on every attempt, and it matches Cloudflare's `CF-Connecting-IP` and `True-Client-IP`;
+  - the other two (a Cloudflare server and a Render proxy) change between requests.
+- **So the visitor's address is third from the right:** `TRUSTED_PROXY_HOPS = 3`. A faked header only adds entries to the left, so it cannot move that position (confirmed by step c).
+- **Afterwards:** the diagnostic setting was removed from Render on 2026-10-14. A first attempt set it to a mistyped value, which the startup settings check refused, failing that deploy. A follow-up PR removes the diagnostic code.
