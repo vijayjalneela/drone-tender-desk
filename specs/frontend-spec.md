@@ -1,6 +1,6 @@
 # Frontend Spec: Drone Tender Desk
 
-> Describes the screens, flows and visible behaviour. Derived from `goal-spec.md`. Draft v0.3, owner: VJ.
+> Describes the screens, flows and visible behaviour. Derived from `goal-spec.md`. Draft v0.4, owner: VJ.
 
 ## 1. Tech Stack
 - React with Vite, React Router for pages, React Query for server data.
@@ -108,7 +108,67 @@ Each criterion is written as "Given a state, the screen shows a behaviour."
 - Responsive: usable on a phone screen of 375 px width and on desktop.
 - Dates always shown as day month year with the month as a word, for example 14 Nov 2026, so 03/04 is never misread.
 - A closing date within 7 days is highlighted as "Closing soon." "Today" for this is today's date in India time (Asia/Kolkata), the same as the backend uses for Open and Closed.
-- Colours and font: to decide.
+- Font: the device's system font (nothing downloaded).
+
+### 7.1 Visual Theme
+Appearance only: the theme never changes behaviour, data, API calls or routes.
+
+**Idea.** A soft wash of the Indian tricolour colours as a background accent, with navy for headings and primary actions. It is a nod to the colours, not the flag.
+
+**Must not use:** the Ashoka Chakra (or any wheel with spokes), the national emblem, the national flag itself, or any government logo or seal. Every image is drawn as inline SVG in the code; no downloaded or copied images.
+
+**Colour tokens**
+
+| Token | Hex | Used for |
+|---|---|---|
+| `navy-900` | `#0B1F4B` | Headings |
+| `navy-700` | `#1D3A8A` | Primary buttons, links, focus outline |
+| `navy-800` | `#162E6E` | Primary button when hovered |
+| `saffron-100` | `#FFE6CC` | Left end of the gradient band (a pale tint of saffron) |
+| `india-green-100` | `#D6F0D9` | Right end of the gradient band (a pale tint of India green) |
+| `open-bg` / `open-text` | `#DCFCE7` / `#166534` | "Open" badge (green) |
+| `soon-bg` / `soon-text` | `#FEF3C7` / `#78350F` | "Closing soon" badge (amber) |
+| `closed-bg` / `closed-text` | `#E2E8F0` / `#334155` | "Closed" badge (grey) |
+
+**Gradient band.** It runs left to right, `saffron-100` → white → `india-green-100`, behind the header and the home page banner. Left to right, so it never reads as the flag's horizontal stripes.
+
+**Header.** It sits on the gradient band: the site name in navy and the links in navy.
+
+**Headings and buttons.**
+- Page headings are `navy-900`.
+- Primary buttons (Search, Log in, Add tender, Extract, Save, View original document) are `navy-700` with white text, `navy-800` on hover.
+- **Publish** stays green, because green means published and open across the site.
+- Keyboard focus shows a visible `navy-700` outline.
+
+**Home page banner** (`/` only, above the filters):
+- On the gradient band, a drawing of a **drone**: a top-down quadcopter silhouette (four rotors, arms and a body) in navy.
+- Beside it, a **counter-drone radar**: concentric rings, one soft sweep wedge and two small blips. There are **no spokes or lines out from the centre**.
+- The tagline: **"Every drone and counter-drone tender from central and state buyers, in one place."**
+- The radar sweep rotates slowly. It does not move at all for visitors whose device asks for reduced motion.
+- The drawing is decorative and hidden from screen readers. The tagline is ordinary text.
+- On a phone the drawing sits above the tagline and is smaller; on desktop they sit side by side.
+
+**Category icons.** A small icon sits beside the category name on tender list rows and on the detail page:
+- a **drone** icon for Drone;
+- a **radar-in-shield** icon for Counter-drone;
+- no icon when the category is empty.
+
+The icon is decorative; the category name stays as text.
+
+**Status badges.**
+- **Open:** green (`open-*`).
+- **Closing soon:** amber (`soon-*`).
+- **Closed:** grey (`closed-*`).
+
+The admin dashboard's Draft/Published/Closed states use the same family: Published green, Closed grey, Draft neutral.
+
+**Footer.** On every page: "Independent project. Not an official Government of India website."
+
+**Accessibility.**
+- Text has a contrast of at least **4.5:1** against its background. Large text and the edges of buttons and badges have at least **3:1** (WCAG AA). An automated test checks the token pairs.
+- Colour is never the only signal: badges keep their words, and categories keep their names.
+
+**Sizes.** It must look right at 375 px wide and on desktop, with no sideways scrolling on any page.
 
 ## 8. Auth and Permissions (client side)
 - The admin login token is stored in the browser and sent with every admin request.

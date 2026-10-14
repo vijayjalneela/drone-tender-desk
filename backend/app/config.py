@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # the right, i.e. the one written by our outermost trusted proxy; entries to its
     # left come from the visitor and can be faked.
     trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # TEMPORARY, off by default: logs one anonymised line per login attempt showing
+    # where the visitor's address arrives (see app/ratelimit.py). Switch on only to
+    # measure TRUSTED_PROXY_HOPS on the host, then switch off again.
+    log_client_ip_diagnostics: bool = False
 
     @field_validator("database_url", "test_database_url")
     @classmethod

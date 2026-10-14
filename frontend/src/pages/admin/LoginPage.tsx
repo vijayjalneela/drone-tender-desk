@@ -43,7 +43,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm space-y-4">
-      <h1 className="text-xl font-semibold">Admin login</h1>
+      <h1 className="text-xl font-semibold text-navy-900">Admin login</h1>
       {notice && !error && (
         <p role="status" className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           {notice}
@@ -85,7 +85,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full btn-primary px-4 py-2 text-sm"
         >
           Log in
         </button>
