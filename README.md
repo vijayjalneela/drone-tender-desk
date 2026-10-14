@@ -1,12 +1,14 @@
 # Drone Tender Desk
 
-One place for Indian drone and counter-drone tenders (RFIs and RFPs). An admin adds a tender, checks its key facts and publishes it. Anyone can then browse published tenders, filter them, and open a one-page summary with a link back to the original document.
+**Live site: https://drone-tender-desk.vercel.app**
+
+Drone Tender Desk brings Indian government tenders (RFIs and RFPs) for drones and counter-drone systems, from central and state buyers, into one place. Anyone can search and filter them, and each tender has a one-page summary of its key facts and a link back to the original document. Behind a login, an admin uploads a tender PDF, fills in or corrects the fields, and publishes it; nothing is public until then. It is a non-commercial course project built with React, FastAPI and PostgreSQL, running on free hosting (Vercel, Render and Neon). It is an independent project, not an official Government of India website, and the original tender documents are always authoritative.
 
 The specs in [`specs/`](specs/) are the source of truth: [goal](specs/goal-spec.md), [frontend](specs/frontend-spec.md), [backend](specs/backend-spec.md), the [API contract](specs/api-contract.md) and [deployment](specs/deployment-spec.md).
 
 ## Status
 
-**Live:** https://drone-tender-desk.vercel.app (the API is at https://drone-tender-desk.onrender.com), deployed on 2026-10-13 on free plans in Ohio. All go-live checks passed on 2026-10-14; the live record is in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
+**Live** since 2026-10-13 (the API is at https://drone-tender-desk.onrender.com), deployed on free plans in Ohio. All go-live checks passed on 2026-10-14; the live record is in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
 
 The first working journey runs locally and on the live site (see [Deploying](#deploying-free-no-card)). An admin logs in, uploads a tender PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public Tender List and Detail pages.
 
