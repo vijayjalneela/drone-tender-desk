@@ -99,3 +99,30 @@ Rules:
 - Vercel preview deployments calling the backend: CORS allows only the production address.
 - Automatic daily backups, monitoring, and alerts.
 - AWS, Terraform and GitHub Actions (the Musafir approach): a possible later move.
+
+## 9. Live Deployment Record
+
+Deployed by hand on 2026-10-13, following the README's "Deploying" steps.
+
+| Part | Address | Where |
+|---|---|---|
+| Frontend | https://drone-tender-desk.vercel.app | Vercel Hobby |
+| Backend | https://drone-tender-desk.onrender.com | Render free, Ohio (US East) |
+| Database | Neon project, database `neondb` (direct connection, not pooled) | Neon free, AWS US East 2 (Ohio) |
+
+Reported by the owner: the admin account was created with `create-admin`, and one real tender was published.
+
+**Go-live checks (§7)**
+
+| # | Check | Result | How |
+|---|---|---|---|
+| 1 | `/api/health` | **Passed** 2026-10-14: `{"status":"ok","database":"ok"}` | Request from outside |
+| 2 | `/docs`, `/redoc`, `/openapi.json` | **Passed** 2026-10-14: all 404 | Request from outside |
+| 3 | No sample data | **Passed** 2026-10-14: the public list holds exactly 1 tender, the real one ("IDDS", a counter-drone RFP closed 22 Feb 2023, issuing body entered as "Central Govt"), and its source link opens a PDF on mod.gov.in, the Ministry of Defence site. The empty-before-first-tender state was not observed, because the tender was added before checking. | Request from outside |
+| 4 | Admin API without a token | **Passed** 2026-10-14: 401 | Request from outside |
+| 5 | Rate limits see real addresses; `TRUSTED_PROXY_HOPS` | **Pending.** Note: responses come through Cloudflare (`server: cloudflare`) in front of Render, so there may be more than one proxy. This check settles the value. | Owner: laptop, phone, faked header |
+| 6 | CORS | **Passed** 2026-10-14: the Vercel address is allowed, another origin is not | Request from outside |
+| — | Deep links on Vercel | **Passed** 2026-10-14: `/`, `/admin`, `/admin/login`, `/tenders/1` and an unknown path all serve the app, and the frontend calls the Render address | Request from outside |
+| 7 | Phone journey on mobile data | **Pending** | Owner: phone |
+| 8 | Live database counts (1 admin, tenders and their PDFs) | **Pending** | Owner: Neon SQL Editor |
+| 9 | Manual backup and restore | **Pending.** The Neon Postgres version must be known first: `pg_dump` must be at least as new as the server. | Owner: own terminal |
