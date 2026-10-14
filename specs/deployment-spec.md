@@ -114,7 +114,7 @@ Deployed by hand on 2026-10-13, following the README's "Deploying" steps.
 
 Reported by the owner: the admin account was created with `create-admin`, and one real tender was published.
 
-**Go-live checks (§7)**
+**Go-live checks (§7).** All nine passed by 2026-10-14. Two known gaps remain: no automatic daily backups (§6), and local development runs Postgres 16 while production runs 18 (§2).
 
 | # | Check | Result | How |
 |---|---|---|---|
@@ -125,7 +125,7 @@ Reported by the owner: the admin account was created with `create-admin`, and on
 | 5 | Rate limits see real addresses; `TRUSTED_PROXY_HOPS` | **Passed** 2026-10-14 with `TRUSTED_PROXY_HOPS = 3`: six wrong logins from a laptop gave 401 ×5 then 429; a phone on mobile data logged in normally (whether that was still inside the laptop's one-minute block was not recorded; the diagnostics already showed each visitor keyed by their own address); a faked `X-Forwarded-For` from the laptop still got 429. See the note below. | Owner: laptop, phone, faked header |
 | 6 | CORS | **Passed** 2026-10-14: the Vercel address is allowed, another origin is not | Request from outside |
 | — | Deep links on Vercel | **Passed** 2026-10-14: `/`, `/admin`, `/admin/login`, `/tenders/1` and an unknown path all serve the app, and the frontend calls the Render address | Request from outside |
-| 7 | Phone journey on mobile data | **Pending: not yet reported.** Partly covered elsewhere: the admin logged in from a phone on mobile data during check 5, and the theme's 375 px layout is checked by an automated browser test. The full journey on a phone still needs confirming. | Owner: phone |
+| 7 | Phone journey on mobile data | **Passed** 2026-10-14, on the owner's phone with Wi-Fi off:<br>• the home page loaded with the theme;<br>• Status: All showed IDDS as Closed;<br>• the detail page and "View original document" worked;<br>• `/admin` redirected to login, and logging in loaded the dashboard;<br>• after Logout, `/admin` went back to login;<br>• no page scrolled sideways, including after rotating. | Owner: phone |
 | 8 | Live database counts (1 admin, tenders and their PDFs) | **Passed** 2026-10-14: admins 1, tenders 1, tender_pdfs 1, extraction_runs 1 (the stub run for the one real tender); no sample data | Owner: Neon SQL Editor |
 | 9 | Manual backup and restore | **Passed** 2026-10-14. Backup `tender_desk-20261014-1354.dump` (1.6 MB) made with `pg_dump` from `postgres:18`, restored into a throwaway `postgres:18` container. The known tender matched: `1 \| IDDS \| 2023-02-22 \| published \| 1764470 bytes \| sha256 a432e304… \| PDF intact`, and "Restore matches the live database". The container was stopped (removed), the temporary files deleted and the address unset. See the note below. | Owner: own terminal |
 

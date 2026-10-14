@@ -6,7 +6,7 @@ The specs in [`specs/`](specs/) are the source of truth: [goal](specs/goal-spec.
 
 ## Status
 
-**Live:** https://drone-tender-desk.vercel.app (the API is at https://drone-tender-desk.onrender.com), deployed on 2026-10-13 on free plans in Ohio. The live record and the go-live checks still open are in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
+**Live:** https://drone-tender-desk.vercel.app (the API is at https://drone-tender-desk.onrender.com), deployed on 2026-10-13 on free plans in Ohio. All go-live checks passed on 2026-10-14; the live record is in [`deployment-spec.md` §9](specs/deployment-spec.md#9-live-deployment-record).
 
 The first working journey runs locally and on the live site (see [Deploying](#deploying-free-no-card)). An admin logs in, uploads a tender PDF with its source URL, fills in the fields by hand, and publishes. The tender then appears on the public Tender List and Detail pages.
 
