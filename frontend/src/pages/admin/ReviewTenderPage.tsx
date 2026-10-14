@@ -37,7 +37,7 @@ export function ReviewTenderPage() {
 
   return (
     <div className="space-y-4">
-      <Link to="/admin" className="text-sm text-blue-700 underline">
+      <Link to="/admin" className="text-sm text-navy-700 underline">
         ← Back to dashboard
       </Link>
       {notFound ? (
@@ -129,7 +129,7 @@ function ReviewForm({ initial }: { initial: TenderAdmin }) {
   return (
     <form onSubmit={onSave} className="space-y-4" noValidate>
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold">{isDraft ? 'Review tender' : 'Edit tender'}</h1>
+        <h1 className="text-xl font-semibold text-navy-900">{isDraft ? 'Review tender' : 'Edit tender'}</h1>
         <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-medium">{adminState(saved)}</span>
       </div>
 
@@ -175,7 +175,7 @@ function ReviewForm({ initial }: { initial: TenderAdmin }) {
         <button
           type="submit"
           disabled={busy}
-          className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-50"
+          className="btn-primary px-4 py-2 text-sm"
         >
           {isDraft ? 'Save draft' : 'Save'}
         </button>

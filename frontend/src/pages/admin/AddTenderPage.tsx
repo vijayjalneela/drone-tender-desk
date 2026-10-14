@@ -69,7 +69,7 @@ export function AddTenderPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
-      <h1 className="text-xl font-semibold">Add tender</h1>
+      <h1 className="text-xl font-semibold text-navy-900">Add tender</h1>
       <form onSubmit={onSubmit} className="space-y-4 rounded border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="pdf" className="text-sm text-slate-600">
@@ -115,7 +115,7 @@ export function AddTenderPage() {
         <button
           type="submit"
           disabled={!canExtract}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="btn-primary px-4 py-2 text-sm"
         >
           Extract
         </button>

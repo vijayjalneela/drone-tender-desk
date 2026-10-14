@@ -43,7 +43,7 @@ export function TenderListPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Drone and counter-drone tenders</h1>
+      <h1 className="text-xl font-semibold text-navy-900">Drone and counter-drone tenders</h1>
       <Filters params={params} onChange={update} />
       <Results
         list={list}
@@ -126,7 +126,7 @@ function TenderRow({ tender, today }: { tender: TenderSummary; today: string }) 
         className="block px-4 py-3 hover:bg-slate-50 focus:bg-slate-50"
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <span className="font-medium text-blue-800">{tender.title ?? 'Untitled tender'}</span>
+          <span className="font-medium text-navy-700">{tender.title ?? 'Untitled tender'}</span>
           <StatusBadge isClosed={tender.is_closed} closingDate={tender.bid_closing_date} today={today} />
         </div>
         <div className="mt-1 text-sm text-slate-700">{tender.issuing_body}</div>
@@ -174,7 +174,7 @@ function Filters({
           placeholder="Search, e.g. jammer or radar"
           className="min-w-0 flex-1 rounded border border-slate-300 px-3 py-1.5"
         />
-        <button type="submit" className="rounded bg-slate-900 px-4 py-1.5 text-sm font-medium text-white">
+        <button type="submit" className="btn-primary px-4 py-1.5 text-sm">
           Search
         </button>
       </form>

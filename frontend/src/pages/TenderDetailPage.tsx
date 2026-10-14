@@ -25,7 +25,7 @@ export function TenderDetailPage() {
   // "Back to tenders" returns to the list with the filters the visitor came from.
   const listSearch = (location.state as { listSearch?: string } | null)?.listSearch ?? ''
   const backLink = (
-    <Link to={{ pathname: '/', search: listSearch }} className="text-sm text-blue-700 underline">
+    <Link to={{ pathname: '/', search: listSearch }} className="text-sm text-navy-700 underline">
       ← Back to tenders
     </Link>
   )
@@ -43,7 +43,7 @@ export function TenderDetailPage() {
     content = (
       <EmptyState>
         <p className="font-medium">Tender not found</p>
-        <Link to="/" className="mt-2 inline-block text-blue-700 underline">
+        <Link to="/" className="mt-2 inline-block text-navy-700 underline">
           Go to the tender list
         </Link>
       </EmptyState>
@@ -68,7 +68,7 @@ function TenderSummaryView({ tender }: { tender: TenderDetail }) {
   return (
     <article className="space-y-4">
       <header className="space-y-2">
-        <h1 className="text-xl font-semibold">{tender.title ?? 'Untitled tender'}</h1>
+        <h1 className="text-xl font-semibold text-navy-900">{tender.title ?? 'Untitled tender'}</h1>
         <StatusBadge isClosed={tender.is_closed} closingDate={tender.bid_closing_date} />
       </header>
 
@@ -80,7 +80,7 @@ function TenderSummaryView({ tender }: { tender: TenderDetail }) {
         href={tender.source_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+        className="inline-block btn-primary px-4 py-2 text-sm"
       >
         View original document
       </a>

@@ -6,7 +6,7 @@ import { useAuth } from '../auth/useAuth'
 export const SITE_NAME = 'Drone Tender Desk'
 
 function navClass({ isActive }: { isActive: boolean }) {
-  return isActive ? 'font-medium text-slate-900' : 'text-slate-600 hover:text-slate-900'
+  return isActive ? 'font-semibold text-navy-900' : 'text-navy-700 hover:text-navy-900 hover:underline'
 }
 
 export function Header() {
@@ -24,9 +24,9 @@ export function Header() {
   }
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="tricolour-band border-b border-slate-200">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-3">
-        <Link to="/" className="text-lg font-semibold text-slate-900">
+        <Link to="/" className="text-lg font-bold text-navy-900">
           {SITE_NAME}
         </Link>
         <nav aria-label="Main" className="flex items-center gap-4 text-sm">
@@ -39,7 +39,7 @@ export function Header() {
               <NavLink to="/admin" end className={navClass}>
                 Admin dashboard
               </NavLink>
-              <button type="button" onClick={onLogout} className="text-slate-600 hover:text-slate-900">
+              <button type="button" onClick={onLogout} className="text-navy-700 hover:text-navy-900 hover:underline">
                 Logout
               </button>
             </>

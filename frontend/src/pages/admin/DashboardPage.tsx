@@ -147,10 +147,10 @@ export function DashboardPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Admin dashboard</h1>
+        <h1 className="text-xl font-semibold text-navy-900">Admin dashboard</h1>
         <Link
           to="/admin/tenders/new"
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          className="btn-primary px-4 py-2 text-sm"
         >
           Add tender
         </Link>
